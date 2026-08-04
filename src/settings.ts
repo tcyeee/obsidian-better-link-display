@@ -1,11 +1,14 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type BookmarkifyPlugin from "../main";
+import { DEFAULT_API_BASE } from "./api";
 
 export interface BookmarkifySettings {
+	apiBase: string;
 	accessToken: string;
 }
 
 export const DEFAULT_SETTINGS: BookmarkifySettings = {
+	apiBase: DEFAULT_API_BASE,
 	accessToken: "",
 };
 
@@ -22,15 +25,32 @@ export class BookmarkifySettingTab extends PluginSettingTab {
 		containerEl.empty();
 
 		new Setting(containerEl)
+			.setName("Server URL")
+			.setDesc(
+				"Base URL of the Bookmarkify service that resolves page titles and icons. " +
+					`Defaults to ${DEFAULT_API_BASE}.`
+			)
+			.addText((text) => {
+				text.inputEl.addClass("bookmarkify-wide-input");
+				text.setPlaceholder(DEFAULT_API_BASE)
+					.setValue(this.plugin.settings.apiBase)
+					.onChange(async (value) => {
+						this.plugin.settings.apiBase = value.trim() || DEFAULT_API_BASE;
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
 			.setName("Access token")
 			.setDesc(
-				"用于调用网页标题/图标查询接口的只读令牌，在网页端的令牌管理页面生成后粘贴到此处。该令牌只能查询网页信息，无法读写你的书签或账号数据。"
+				"Read-only token used to query page titles and icons. Generate one on the " +
+					"service's token management page and paste it here. It cannot read or " +
+					"modify your bookmarks or account data."
 			)
 			.addText((text) => {
 				text.inputEl.type = "password";
-				text.inputEl.style.width = "100%";
-				text
-					.setPlaceholder("粘贴 AccessToken")
+				text.inputEl.addClass("bookmarkify-wide-input");
+				text.setPlaceholder("Paste your access token")
 					.setValue(this.plugin.settings.accessToken)
 					.onChange(async (value) => {
 						this.plugin.settings.accessToken = value.trim();

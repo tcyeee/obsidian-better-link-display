@@ -5,30 +5,61 @@ export interface SiteInfo {
 	favicon: string;
 }
 
-interface SiteInfoResponse {
-	code: number;
-	msg: string;
-	data: SiteInfo | null;
-	ok: boolean;
+/**
+ * Why a lookup failed. The caller uses this to decide whether the outcome is
+ * worth remembering: a "transient" failure must never be cached, or a single
+ * outage would leave every link un-enhanced until Obsidian restarts.
+ */
+export type FetchFailure = "auth" | "unresolved" | "transient";
+
+export type FetchResult =
+	| { ok: true; info: SiteInfo }
+	| { ok: false; failure: FetchFailure };
+
+/** Response code the service returns for a revoked or invalid token. */
+const CODE_INVALID_TOKEN = 125;
+
+export const DEFAULT_API_BASE = "http://127.0.0.1:8001";
+
+function isSiteInfo(value: unknown): value is SiteInfo {
+	if (!value || typeof value !== "object") return false;
+	const candidate = value as Partial<SiteInfo>;
+	return typeof candidate.title === "string" && typeof candidate.favicon === "string";
 }
 
-const API_BASE = "http://127.0.0.1:8001";
+export async function fetchSiteInfo(
+	apiBase: string,
+	url: string,
+	token: string
+): Promise<FetchResult> {
+	const base = apiBase.replace(/\/+$/, "");
+	const endpoint = `${base}/extension/site-info?url=${encodeURIComponent(url)}`;
 
-export async function fetchSiteInfo(url: string, token: string): Promise<SiteInfo | null> {
-	const response = await requestUrl({
-		url: `${API_BASE}/extension/site-info?url=${encodeURIComponent(url)}`,
-		method: "GET",
-		headers: { "X-Extension-Token": token },
-		throw: false,
-	});
-
-	if (response.status !== 200) {
-		return null;
+	let status: number;
+	let body: unknown;
+	try {
+		const response = await requestUrl({
+			url: endpoint,
+			method: "GET",
+			headers: { "X-Extension-Token": token },
+			throw: false,
+		});
+		status = response.status;
+		body = response.json;
+	} catch {
+		// Service unreachable, or a body that isn't JSON — always worth retrying.
+		return { ok: false, failure: "transient" };
 	}
 
-	const body = response.json as SiteInfoResponse;
-	if (!body.ok || !body.data) {
-		return null;
-	}
-	return body.data;
+	if (status === 401 || status === 403) return { ok: false, failure: "auth" };
+	if (status !== 200) return { ok: false, failure: "transient" };
+
+	if (!body || typeof body !== "object") return { ok: false, failure: "transient" };
+	const payload = body as { code?: unknown; ok?: unknown; data?: unknown };
+
+	if (payload.code === CODE_INVALID_TOKEN) return { ok: false, failure: "auth" };
+	if (payload.ok === true && isSiteInfo(payload.data)) return { ok: true, info: payload.data };
+
+	// The service answered but could not resolve the page — remembering this is safe.
+	return { ok: false, failure: "unresolved" };
 }
