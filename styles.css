@@ -3,19 +3,87 @@
 }
 
 /*
- * The favicon this plugin embeds into a formatted link. Matching on the inlined
- * `data:` source keeps the rule to images the plugin wrote itself, so it cannot
- * affect ordinary links that happen to contain a picture. The same selector
- * covers Reading view and Live Preview, and needs nothing stored in the note.
+ * A link this plugin formatted: an external link whose only marker is the inlined
+ * favicon it embedded. Matching on the `data:` source keeps these rules to links
+ * the plugin wrote itself, so they cannot affect ordinary links that happen to
+ * contain a picture. These selectors are for Reading view, where the favicon is
+ * nested inside the anchor; Live Preview has a different DOM, handled further
+ * down. Neither needs anything stored in the note.
+ *
+ * The anchor is toned down to read as a formatted title rather than a raw link:
+ * muted text, no underline, and Obsidian's trailing external-link icon removed
+ * (its background image and the padding reserved for it).
  */
+a.external-link:has(> img[src^="data:image/"]) {
+	color: var(--text-muted);
+	text-decoration: none;
+	background-image: none;
+	padding-inline-end: 0;
+}
+
+/* The embedded favicon, shrunk to 16px from its 48px intrinsic size (kept sharp). */
 a.external-link > img[src^="data:image/"] {
-	width: 1em;
-	height: 1em;
-	max-width: 1em;
-	max-height: 1em;
+	width: 16px;
+	height: 16px;
+	max-width: 16px;
+	max-height: 16px;
 	margin: 0 0.25em 0 0;
-	vertical-align: -0.125em;
+	vertical-align: middle;
+	border-radius: var(--radius-s);
 	object-fit: contain;
+}
+
+/*
+ * Live Preview renders the same Markdown very differently: CodeMirror turns the
+ * inlined `data:` favicon into a full image embed and the link text into a
+ * `.cm-link` span — siblings inside one `.cm-line`, never nested in an anchor.
+ * The rules above therefore match nothing here, so the toned-down look is
+ * re-created below, still keyed off the `data:` favicon the plugin embeds so
+ * ordinary links and images in the editor are left alone.
+ */
+
+/* The favicon embed, shrunk to an inline 16px icon from its 48px intrinsic size. */
+.cm-editor .image-embed > .image-wrapper > img[src^="data:image/"] {
+	width: 16px;
+	height: 16px;
+	max-width: 16px;
+	max-height: 16px;
+	margin: 0 0.25em 0 0;
+	vertical-align: middle;
+	border-radius: var(--radius-s);
+	object-fit: contain;
+}
+
+/*
+ * Centre the embed on the text line — on its own the embed aligns to the
+ * baseline and the icon sits low — and drop the resize handle and hover
+ * controls a favicon has no use for.
+ */
+.cm-editor .image-embed:has(> .image-wrapper > img[src^="data:image/"]) {
+	vertical-align: middle;
+}
+
+.cm-editor .image-embed:has(> .image-wrapper > img[src^="data:image/"]) .image-resize-corner,
+.cm-editor .image-embed:has(> .image-wrapper > img[src^="data:image/"]) .embed-actions {
+	display: none;
+}
+
+/*
+ * On a line carrying a favicon, mute the link text and drop its underline. When
+ * the line is not focused Obsidian wraps the text in an inner `.cm-underline`
+ * span that carries both the link colour and the underline, so it has to be
+ * targeted directly — styling only the outer `.cm-link` leaves the child's own
+ * decoration and colour untouched.
+ */
+.cm-editor .cm-line:has(img[src^="data:image/"]) .cm-link,
+.cm-editor .cm-line:has(img[src^="data:image/"]) .cm-underline {
+	color: var(--text-muted);
+	text-decoration: none;
+}
+
+.cm-editor .cm-line:has(img[src^="data:image/"]) .external-link {
+	background-image: none;
+	padding-inline-end: 0;
 }
 
 /*
