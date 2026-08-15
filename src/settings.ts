@@ -34,13 +34,13 @@ const SAVE_DEBOUNCE_MS = 500;
 /** Notices explain a fix, so they need longer than Obsidian's default. */
 const NOTICE_MS = 8000;
 
-/** How long the Test button stays on "Success" before returning to normal. */
-const SUCCESS_STATE_MS = 3000;
+/** How long the Test button shows its result before returning to normal. */
+const RESULT_STATE_MS = 1000;
 
 export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 	plugin: BetterLinkDisplayPlugin;
 	private saveTimer = 0;
-	private successTimer = 0;
+	private resultTimer = 0;
 
 	constructor(
 		app: App,
@@ -66,8 +66,8 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 	/** Closing the tab must not discard a value the user just finished typing. */
 	hide(): void {
 		// The button this would have reset is about to be destroyed.
-		window.clearTimeout(this.successTimer);
-		this.successTimer = 0;
+		window.clearTimeout(this.resultTimer);
+		this.resultTimer = 0;
 
 		if (this.saveTimer === 0) return;
 		window.clearTimeout(this.saveTimer);
@@ -146,16 +146,18 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 	/**
 	 * Tests the token as currently typed rather than as last saved, so the answer
 	 * is about the value the user is looking at. The button reports progress and
-	 * success itself: a request takes a moment, and a silent button reads as a
-	 * dead one. Only failures get a notice, because only failures need a sentence
-	 * of explanation.
+	 * the verdict itself: a request takes a moment, and a silent button reads as a
+	 * dead one.
 	 */
 	private async testToken(button: ButtonComponent): Promise<void> {
-		this.cancelSuccessState(button);
+		this.clearResultState(button);
 
 		const token = this.plugin.settings.accessToken;
+		// An empty field is a failed test as far as the button is concerned: every
+		// click on it should end in one of the two verdicts, never in nothing.
 		if (!token) {
 			new Notice(t("test.empty"), NOTICE_MS);
+			this.showResult(button, false);
 			return;
 		}
 
@@ -170,26 +172,32 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 
 		// The tab may have been re-rendered or closed while the request ran.
 		if (!button.buttonEl.isConnected) return;
-		button.setDisabled(false).setButtonText(t("token.test"));
+		button.setDisabled(false);
 
-		if (!outcome.ok) {
-			new Notice(verifyMessage(outcome), NOTICE_MS);
-			return;
-		}
+		// The button can only say that something went wrong; which of the failures
+		// it was needs a sentence, so those keep their notice.
+		if (!outcome.ok) new Notice(verifyMessage(outcome), NOTICE_MS);
+		this.showResult(button, outcome.ok);
+	}
 
-		button.setButtonText(t("token.success"));
-		button.buttonEl.addClass("better-link-display-test-success");
-		this.successTimer = window.setTimeout(() => {
-			this.successTimer = 0;
-			if (button.buttonEl.isConnected) this.cancelSuccessState(button);
-		}, SUCCESS_STATE_MS);
+	/** Colour the button with the verdict, then hand it back to the user. */
+	private showResult(button: ButtonComponent, ok: boolean): void {
+		button.setButtonText(ok ? t("token.success") : t("token.failure"));
+		button.buttonEl.addClass(
+			ok ? "better-link-display-test-success" : "better-link-display-test-failure"
+		);
+		this.resultTimer = window.setTimeout(() => {
+			this.resultTimer = 0;
+			if (button.buttonEl.isConnected) this.clearResultState(button);
+		}, RESULT_STATE_MS);
 	}
 
 	/** Put the button back to its resting label, cancelling any pending reset. */
-	private cancelSuccessState(button: ButtonComponent): void {
-		window.clearTimeout(this.successTimer);
-		this.successTimer = 0;
+	private clearResultState(button: ButtonComponent): void {
+		window.clearTimeout(this.resultTimer);
+		this.resultTimer = 0;
 		button.buttonEl.removeClass("better-link-display-test-success");
+		button.buttonEl.removeClass("better-link-display-test-failure");
 		button.setButtonText(t("token.test"));
 	}
 }
