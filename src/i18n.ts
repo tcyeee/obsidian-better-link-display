@@ -31,6 +31,7 @@ const en = {
 	"token.test": "Test",
 	"token.testing": "Testing…",
 	"token.success": "Success",
+	"token.failure": "Failed",
 
 	"test.empty": "Better Link Display: paste an access token before testing it.",
 	"test.ok": "Better Link Display: the access token works.",
@@ -79,6 +80,7 @@ const zh: Record<TranslationKey, string> = {
 	"token.test": "测试",
 	"token.testing": "测试中…",
 	"token.success": "成功",
+	"token.failure": "失败",
 
 	"test.empty": "Better Link Display：请先填写访问令牌再测试。",
 	"test.ok": "Better Link Display：访问令牌可用。",
