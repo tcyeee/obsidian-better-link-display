@@ -12,12 +12,36 @@ export const DEFAULT_SETTINGS: BetterLinkDisplaySettings = {
 	accessToken: "",
 };
 
+/** Long enough to collapse typing into one write, short enough to feel saved. */
+const SAVE_DEBOUNCE_MS = 500;
+
 export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 	plugin: BetterLinkDisplayPlugin;
+	private saveTimer = 0;
 
 	constructor(app: App, plugin: BetterLinkDisplayPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
+	}
+
+	/**
+	 * `onChange` fires once per keystroke, and an access token is a long thing to
+	 * type — writing data.json on each one is dozens of writes for one value.
+	 */
+	private queueSave(): void {
+		window.clearTimeout(this.saveTimer);
+		this.saveTimer = window.setTimeout(() => {
+			this.saveTimer = 0;
+			void this.plugin.saveSettings();
+		}, SAVE_DEBOUNCE_MS);
+	}
+
+	/** Closing the tab must not discard a value the user just finished typing. */
+	hide(): void {
+		if (this.saveTimer === 0) return;
+		window.clearTimeout(this.saveTimer);
+		this.saveTimer = 0;
+		void this.plugin.saveSettings();
 	}
 
 	display(): void {
@@ -34,9 +58,9 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 				text.inputEl.addClass("better-link-display-wide-input");
 				text.setPlaceholder(DEFAULT_API_BASE)
 					.setValue(this.plugin.settings.apiBase)
-					.onChange(async (value) => {
+					.onChange((value) => {
 						this.plugin.settings.apiBase = value.trim() || DEFAULT_API_BASE;
-						await this.plugin.saveSettings();
+						this.queueSave();
 					});
 			});
 
@@ -52,9 +76,9 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 				text.inputEl.addClass("better-link-display-wide-input");
 				text.setPlaceholder("Paste your access token")
 					.setValue(this.plugin.settings.accessToken)
-					.onChange(async (value) => {
+					.onChange((value) => {
 						this.plugin.settings.accessToken = value.trim();
-						await this.plugin.saveSettings();
+						this.queueSave();
 					});
 			});
 	}

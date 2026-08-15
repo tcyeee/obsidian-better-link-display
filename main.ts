@@ -6,11 +6,10 @@ import {
 } from "./src/settings";
 import { SiteLookup } from "./src/lookup";
 import { BetterLinkDisplayEditorFeature } from "./src/editorExtension";
-import { wrapFormattedLinks } from "./src/render";
 
 export default class BetterLinkDisplayPlugin extends Plugin {
 	settings!: BetterLinkDisplaySettings;
-	private editorFeature!: BetterLinkDisplayEditorFeature;
+	private editorFeature?: BetterLinkDisplayEditorFeature;
 
 	async onload() {
 		await this.loadSettings();
@@ -20,11 +19,17 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 
 		this.addSettingTab(new BetterLinkDisplaySettingTab(this.app, this));
 		this.registerEditorExtension(this.editorFeature.extension);
-		this.registerMarkdownPostProcessor((element) => wrapFormattedLinks(element));
+		this.addCommand({
+			id: "format-link-under-cursor",
+			name: "Format link under cursor",
+			editorCheckCallback: (checking, editor) =>
+				this.editorFeature?.formatAtCursor(editor, checking) ?? false,
+		});
 	}
 
 	onunload() {
-		this.editorFeature.destroy();
+		// Guarded because onload may have failed before this was constructed.
+		this.editorFeature?.destroy();
 	}
 
 	async loadSettings() {

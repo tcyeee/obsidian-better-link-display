@@ -1,5 +1,5 @@
-import { Notice } from "obsidian";
-import { EditorState, Extension, StateEffect, StateField } from "@codemirror/state";
+import { Editor, Notice } from "obsidian";
+import { Extension, StateEffect, StateField } from "@codemirror/state";
 import {
 	Decoration,
 	DecorationSet,
@@ -8,8 +8,8 @@ import {
 	hoverTooltip,
 } from "@codemirror/view";
 import { LOOKUP_TIMEOUT_MS, LookupConfig, LookupFailure, LookupOutcome, SiteLookup } from "./lookup";
-import { findExternalLinkAt, toLinkText } from "./urlScan";
-import { FORMATTED_LINK_MARKER } from "./render";
+import { findExternalLinkAt, toLinkDestination, toLinkText } from "./urlScan";
+import { inVerbatimBlock } from "./verbatim";
 
 /**
  * The button should feel instant. CodeMirror treats a zero here as "use the
@@ -23,7 +23,7 @@ const FAILURE_HIGHLIGHT_MS = 2500;
 /** Failure notices explain a fix, so they need longer than Obsidian's default. */
 const FAILURE_NOTICE_MS = 8000;
 
-const BUTTON_LABEL = "格式化";
+const BUTTON_LABEL = "Format";
 
 /** Marks the URL that is currently being resolved. */
 const startLoading = StateEffect.define<{ id: number; from: number; to: number }>();
@@ -107,8 +107,9 @@ function hasMarkOverlapping(view: EditorView, from: number, to: number): boolean
 }
 
 /**
- * Owns the hover button and the loading state. Held by the plugin so pending
- * timers can be cancelled on unload.
+ * Owns the two ways to start a format — the hover button and the command — and
+ * the loading state both share. Held by the plugin so pending timers can be
+ * cancelled on unload.
  */
 export class BetterLinkDisplayEditorFeature {
 	readonly extension: Extension;
@@ -128,6 +129,31 @@ export class BetterLinkDisplayEditorFeature {
 		this.timers.clear();
 	}
 
+	/**
+	 * Command entry point, anchored to the caret instead of the pointer. The
+	 * hover button is unreachable by keyboard and absent on touch, so the same
+	 * action has to exist somewhere that does not require a mouse.
+	 */
+	formatAtCursor(editor: Editor, checking: boolean): boolean {
+		const view = editorView(editor);
+		if (!view) return false;
+		if (!view.state.facet(EditorView.editable)) return false;
+
+		const cursor = view.state.selection.main.head;
+		const line = view.state.doc.lineAt(cursor);
+		if (inVerbatimBlock(view.state.doc, line.number)) return false;
+
+		const hit = findExternalLinkAt(line.text, cursor - line.from);
+		if (!hit) return false;
+
+		const from = line.from + hit.from;
+		const to = line.from + hit.to;
+		if (hasMarkOverlapping(view, from, to)) return false;
+
+		if (!checking) void this.format(view, from, to, view.state.sliceDoc(from, to), hit.url);
+		return true;
+	}
+
 	private tooltip(): Extension {
 		return hoverTooltip(
 			(view, pos) => {
@@ -136,7 +162,7 @@ export class BetterLinkDisplayEditorFeature {
 				if (!view.state.facet(EditorView.editable)) return null;
 
 				const line = view.state.doc.lineAt(pos);
-				if (inVerbatimBlock(view.state, line.number)) return null;
+				if (inVerbatimBlock(view.state.doc, line.number)) return null;
 
 				const hit = findExternalLinkAt(line.text, pos - line.from);
 				if (!hit) return null;
@@ -219,16 +245,14 @@ export class BetterLinkDisplayEditorFeature {
 			return;
 		}
 
-		const current = findMark(view.state.field(pendingField), id, view.state.doc.length);
-		if (!current) return;
 		// The user may have edited the URL away while the request was in flight;
 		// rewriting whatever now sits at those offsets would corrupt the note.
-		if (view.state.sliceDoc(current.from, current.to) !== source) {
+		if (view.state.sliceDoc(range.from, range.to) !== source) {
 			view.dispatch({ effects: clearMark.of(id) });
 			return;
 		}
 		view.dispatch({
-			changes: { from: current.from, to: current.to, insert: bookmarkMarkdown(outcome.info, url) },
+			changes: { from: range.from, to: range.to, insert: bookmarkMarkdown(outcome.info, url) },
 			effects: clearMark.of(id),
 		});
 	}
@@ -272,37 +296,24 @@ export class BetterLinkDisplayEditorFeature {
  * The bookmark as it is written into the note: the icon is embedded as a data
  * URL rather than fetched at render time, so the line keeps working when the
  * note is copied into another vault, another app, or a plain markdown file.
+ *
+ * Nothing plugin-specific is written alongside it. The result is ordinary
+ * Markdown that renders the same with the plugin disabled or absent, and the
+ * styling in styles.css recognises it by the inlined icon rather than by a
+ * marker that would otherwise linger in the user's file for good.
  */
-function bookmarkMarkdown(info: { title: string; favicon: string }, url: string): string {
+export function bookmarkMarkdown(info: { title: string; favicon: string }, url: string): string {
 	const icon = info.favicon ? `![](${info.favicon}) ` : "";
-	return `[${icon}${toLinkText(info.title, url)}](${url} "${FORMATTED_LINK_MARKER}")`;
+	return `[${icon}${toLinkText(info.title, url)}](${toLinkDestination(url)})`;
 }
 
-const FENCE = /^\s{0,3}(?:```|~~~)/;
-
 /**
- * True when the line sits inside a fenced code block or the YAML frontmatter —
- * places where a URL is data, not a link, and must be left exactly as written.
- *
- * Counting fences from the top of the document is cheap enough here: the check
- * only runs once the pointer has rested on a URL.
+ * Obsidian's `Editor` wraps the CodeMirror view that owns the loading state.
+ * The property is not in the public typings, so it is narrowed rather than
+ * asserted: an Obsidian release that drops it disables the command instead of
+ * throwing inside one.
  */
-function inVerbatimBlock(state: EditorState, lineNumber: number): boolean {
-	let inFence = false;
-	let inFrontmatter = false;
-
-	for (let n = 1; n < lineNumber; n++) {
-		const text = state.doc.line(n).text;
-		if (n === 1 && text.trim() === "---") {
-			inFrontmatter = true;
-			continue;
-		}
-		if (inFrontmatter) {
-			if (text.trim() === "---") inFrontmatter = false;
-			continue;
-		}
-		if (FENCE.test(text)) inFence = !inFence;
-	}
-
-	return inFence || inFrontmatter;
+function editorView(editor: Editor): EditorView | null {
+	const candidate = (editor as unknown as { cm?: unknown }).cm;
+	return candidate instanceof EditorView ? candidate : null;
 }

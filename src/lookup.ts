@@ -45,10 +45,17 @@ export class SiteLookup {
 		const { apiBase, accessToken } = this.getConfig();
 		if (!apiBase || !accessToken) return { ok: false, reason: "unconfigured" };
 
-		const timeout = delay(LOOKUP_TIMEOUT_MS).then(
-			() => ({ ok: false, reason: "timeout" }) as LookupOutcome
-		);
-		return Promise.race([this.schedule(() => this.request(url)), timeout]);
+		let timer = 0;
+		const timeout = new Promise<LookupOutcome>((resolve) => {
+			timer = window.setTimeout(() => resolve({ ok: false, reason: "timeout" }), LOOKUP_TIMEOUT_MS);
+		});
+		try {
+			return await Promise.race([this.schedule(() => this.request(url)), timeout]);
+		} finally {
+			// A request that answered in 200ms must not leave a ten-second timer
+			// behind it; those accumulate one per formatted link.
+			window.clearTimeout(timer);
+		}
 	}
 
 	private async request(url: string): Promise<LookupOutcome> {

@@ -1,18 +1,20 @@
 {
   "name": "obsidian-better-link-display",
   "version": "0.1.0",
-  "description": "自动为笔记中的裸链接补全网站图标与标题",
+  "description": "Turn bare URL links into rich bookmarks showing the site's favicon and title.",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "tsx --test \"src/**/*.test.ts\"",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": [],
-  "author": "",
+  "author": "tcyeee",
   "license": "MIT",
   "devDependencies": {
+    "@codemirror/state": "^6.5.0",
+    "@codemirror/view": "^6.38.6",
     "@types/node": "^20.11.5",
     "esbuild": "0.28.1",
     "obsidian": "^1.13.1",

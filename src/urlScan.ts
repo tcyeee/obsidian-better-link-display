@@ -6,11 +6,16 @@
 
 /**
  * Parentheses and brackets are excluded so a match can never swallow the
- * surrounding markdown link syntax. The cost is that a URL which legitimately
- * contains parentheses is cut short — acceptable, since such a URL is
- * ambiguous in markdown anyway.
+ * surrounding markdown link syntax. A URL that legitimately contains one is
+ * therefore cut short, which {@link BRACKET_AFTER_MATCH} detects and refuses.
  */
 const BARE_URL = /https?:\/\/[^\s<>()[\]{}"'`\\]+/gi;
+
+/**
+ * An opening bracket directly after a match means {@link BARE_URL} stopped
+ * early and the real URL continues past what was matched.
+ */
+const BRACKET_AFTER_MATCH = /[([{]/;
 
 /** Sentence punctuation that follows a URL belongs to the sentence, not the URL. */
 const TRAILING_PUNCTUATION = /[.,;:!?'"，。、；：！？）】]+$/;
@@ -28,8 +33,6 @@ export interface MarkdownLinkHit {
 	from: number;
 	/** Offset just past the closing `)`. */
 	to: number;
-	/** Offset of the first character of the link text. */
-	textFrom: number;
 	url: string;
 }
 
@@ -139,6 +142,10 @@ export function findBareUrlAt(line: string, offset: number): UrlHit | null {
 		const previous = start > 0 ? line.charAt(start - 1) : "";
 		if (previous === "(" || previous === "[" || previous === "<") return null;
 		if (insideInlineCode(line.slice(0, start))) return null;
+		// Formatting a truncated URL would silently repoint the link at a
+		// different page and leave the remainder stranded outside it, so offer
+		// nothing rather than something wrong.
+		if (BRACKET_AFTER_MATCH.test(line.charAt(start + match[0].length))) return null;
 
 		return { from: start, to: end, url };
 	}
@@ -159,12 +166,7 @@ export function findMarkdownLinks(text: string): MarkdownLinkHit[] {
 		const destination = markdownDestination(text, closeBracket + 1);
 		if (!destination) continue;
 
-		hits.push({
-			from: open,
-			to: destination.closeParen + 1,
-			textFrom: open + 1,
-			url: destination.url,
-		});
+		hits.push({ from: open, to: destination.closeParen + 1, url: destination.url });
 		open = destination.closeParen;
 	}
 	return hits;
@@ -200,19 +202,6 @@ export function findExternalLinkAt(line: string, offset: number): UrlHit | null 
 }
 
 /**
- * Cache key for a favicon. `www.` is dropped so a site looked up once is
- * recognised whether or not a later link carries the subdomain.
- */
-export function extractHost(url: string): string | null {
-	try {
-		const host = new URL(url).hostname.toLowerCase();
-		return host.startsWith("www.") ? host.slice(4) : host;
-	} catch {
-		return null;
-	}
-}
-
-/**
  * The service is documented to return favicons as base64 data URLs. Reject
  * anything else so a compromised or misconfigured endpoint can't turn a note
  * into a set of tracking-pixel requests.
@@ -221,11 +210,56 @@ export function isSafeFaviconSrc(src: string): boolean {
 	return /^data:image\/[a-z0-9.+-]+[;,]/i.test(src);
 }
 
+/** True when every parenthesis in the string is matched by a later one. */
+function hasBalancedParens(url: string): boolean {
+	let depth = 0;
+	for (let i = 0; i < url.length; i++) {
+		const char = url.charAt(i);
+		if (char === "(") depth += 1;
+		else if (char === ")") {
+			depth -= 1;
+			if (depth < 0) return false;
+		}
+	}
+	return depth === 0;
+}
+
+function percentEncode(char: string): string {
+	// encodeURIComponent leaves parentheses alone, but they are exactly what has
+	// to go when the destination cannot rely on them being balanced.
+	if (char === "(") return "%28";
+	if (char === ")") return "%29";
+	return encodeURIComponent(char);
+}
+
 /**
- * Make a site title safe to drop into `[…](url)`: brackets would terminate the
- * link text early, and a newline would break the link across block boundaries.
+ * Render a URL as the destination of an inline Markdown link.
+ *
+ * Whitespace and angle brackets end a destination early, and so do parentheses
+ * unless every one of them is matched — an autolink or an angle-bracket
+ * destination can supply all three. Percent-encoding those characters leaves
+ * the address a browser resolves unchanged while guaranteeing the written link
+ * parses back to the URL it was built from.
+ */
+export function toLinkDestination(url: string): string {
+	const unsafe = hasBalancedParens(url) ? /[\s<>]/g : /[\s<>()]/g;
+	return url.replace(unsafe, percentEncode);
+}
+
+/**
+ * Make a title safe to drop into `[…](url)`: brackets would terminate the link
+ * text early, a trailing backslash would escape the closing one, and a newline
+ * would break the link across block boundaries.
  */
 export function toLinkText(title: string, fallback: string): string {
-	const cleaned = title.replace(/[[\]]/g, "").replace(/\s+/g, " ").trim();
-	return cleaned.length > 0 ? cleaned : fallback;
+	const cleaned = sanitizeLinkText(title);
+	return cleaned.length > 0 ? cleaned : sanitizeLinkText(fallback);
+}
+
+function sanitizeLinkText(value: string): string {
+	return value
+		.replace(/\\/g, "\\\\")
+		.replace(/[[\]]/g, "")
+		.replace(/\s+/g, " ")
+		.trim();
 }

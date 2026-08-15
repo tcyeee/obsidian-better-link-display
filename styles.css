@@ -3,15 +3,12 @@
 }
 
 /*
- * Every formatted link is placed in a plugin-owned wrapper by the Markdown
- * post processor. Keeping all styling below that wrapper prevents these rules
- * from leaking into normal links or links rendered by other plugins.
+ * The favicon this plugin embeds into a formatted link. Matching on the inlined
+ * `data:` source keeps the rule to images the plugin wrote itself, so it cannot
+ * affect ordinary links that happen to contain a picture. The same selector
+ * covers Reading view and Live Preview, and needs nothing stored in the note.
  */
-.better-link-display-rich-link-wrapper {
-	border: 1px solid red;
-}
-
-.better-link-display-rich-link-wrapper > a.external-link > img[alt=""] {
+a.external-link > img[src^="data:image/"] {
 	width: 1em;
 	height: 1em;
 	max-width: 1em;
@@ -43,25 +40,26 @@
 /*
  * A link being resolved. The background pulses between the two tones below so
  * the wait reads as activity rather than a stuck link, and the text fades to
- * signal that it is about to be replaced.
+ * signal that it is about to be replaced. Both tones come from the theme: a
+ * fixed light grey turns into a bright patch under a dark one.
  */
 .cm-editor .better-link-display-loading {
 	padding: 1px 3px;
 	border-radius: 3px;
-	color: #9da09a;
+	color: var(--text-faint);
 	text-decoration: none;
-	background-color: #f4f5f1;
+	background-color: var(--background-modifier-hover);
 	animation: better-link-display-breathe 1.5s ease-in-out infinite;
 }
 
 @keyframes better-link-display-breathe {
 	0%,
 	100% {
-		background-color: #f4f5f1;
+		background-color: var(--background-modifier-hover);
 	}
 
 	50% {
-		background-color: #e0e2da;
+		background-color: var(--background-modifier-border);
 	}
 }
 

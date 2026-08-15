@@ -22,7 +22,6 @@ const CODE_INVALID_TOKEN = 125;
 
 export const DEFAULT_API_BASE = "https://bookmarkify.cc/api";
 
-
 function isSiteInfo(value: unknown): value is SiteInfo {
 	if (!value || typeof value !== "object") return false;
 	const candidate = value as Partial<SiteInfo>;
@@ -66,6 +65,6 @@ export async function fetchSiteInfo(
 		return { ok: true, info: { title: payload.data.title, favicon } };
 	}
 
-	// The service answered but could not resolve the page — remembering this is safe.
+	// The service answered, but could not read the page behind the URL.
 	return { ok: false, failure: "unresolved" };
 }
