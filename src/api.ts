@@ -1,4 +1,5 @@
 import { requestUrl } from "obsidian";
+import { toInlineIcon } from "./favicon";
 
 export interface SiteInfo {
 	title: string;
@@ -6,11 +7,11 @@ export interface SiteInfo {
 }
 
 /**
- * Why a lookup failed. The caller uses this to decide whether the outcome is
- * worth remembering: a "transient" failure must never be cached, or a single
- * outage would leave every link un-enhanced until Obsidian restarts.
+ * Why a lookup failed. These are kept apart so the user is told which of the
+ * three very different problems they actually have: the service isn't running,
+ * the service is running but unhappy, or the page itself couldn't be resolved.
  */
-export type FetchFailure = "auth" | "unresolved" | "transient";
+export type FetchFailure = "auth" | "unresolved" | "unreachable" | "server";
 
 export type FetchResult =
 	| { ok: true; info: SiteInfo }
@@ -19,7 +20,8 @@ export type FetchResult =
 /** Response code the service returns for a revoked or invalid token. */
 const CODE_INVALID_TOKEN = 125;
 
-export const DEFAULT_API_BASE = "http://127.0.0.1:8001";
+export const DEFAULT_API_BASE = "https://bookmarkify.cc/api";
+
 
 function isSiteInfo(value: unknown): value is SiteInfo {
 	if (!value || typeof value !== "object") return false;
@@ -47,18 +49,22 @@ export async function fetchSiteInfo(
 		status = response.status;
 		body = response.json;
 	} catch {
-		// Service unreachable, or a body that isn't JSON — always worth retrying.
-		return { ok: false, failure: "transient" };
+		// Nothing answered on that address at all — almost always a service that
+		// isn't running, or a wrong Server URL.
+		return { ok: false, failure: "unreachable" };
 	}
 
 	if (status === 401 || status === 403) return { ok: false, failure: "auth" };
-	if (status !== 200) return { ok: false, failure: "transient" };
+	if (status !== 200) return { ok: false, failure: "server" };
 
-	if (!body || typeof body !== "object") return { ok: false, failure: "transient" };
+	if (!body || typeof body !== "object") return { ok: false, failure: "server" };
 	const payload = body as { code?: unknown; ok?: unknown; data?: unknown };
 
 	if (payload.code === CODE_INVALID_TOKEN) return { ok: false, failure: "auth" };
-	if (payload.ok === true && isSiteInfo(payload.data)) return { ok: true, info: payload.data };
+	if (payload.ok === true && isSiteInfo(payload.data)) {
+		const favicon = await toInlineIcon(payload.data.favicon);
+		return { ok: true, info: { title: payload.data.title, favicon } };
+	}
 
 	// The service answered but could not resolve the page — remembering this is safe.
 	return { ok: false, failure: "unresolved" };

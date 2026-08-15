@@ -17,13 +17,16 @@ AccessToken 是一种与你的账号登录会话（satoken）完全隔离的只�
 ## 接口
 
 ### 查询网站标题与图标
-GET http://127.0.0.1:8001/extension/site-info?url=<目标网页URL>
+GET https://bookmarkify.cc/api/extension/site-info?url=<目标网页URL>
+
+（线上经 nginx `location /api/` 转发到 bookmarkify-api:7001，`/api` 前缀会被剥掉。
+本地起 API 时为 http://127.0.0.1:8001/extension/site-info，无 `/api` 前缀。）
 
 Header:
   X-Extension-Token: <token>
 
 curl 示例：
-  curl -H "X-Extension-Token: YOUR_TOKEN" "http://127.0.0.1:8001/extension/site-info?url=https://example.com"
+  curl -H "X-Extension-Token: YOUR_TOKEN" "https://bookmarkify.cc/api/extension/site-info?url=https://example.com"
 
 成功响应：
   {
@@ -32,7 +35,8 @@ curl 示例：
     "data": { "title": "Example Domain", "favicon": "data:image/png;base64,..." },
     "ok": true
   }
-  favicon 为 base64 data URL，可能为空。
+  favicon 实测为 cdn.bookmarkify.cc 上的签名 URL（`Expires` 约 1 小时后失效），也可能为空。
+  调用方不要持久化这个 URL——过期后即 404，需要用到时把图片下载下来自行保存。
 
 失败响应（token 无效或已被撤销）：
   {

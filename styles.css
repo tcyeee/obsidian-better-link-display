@@ -1,11 +1,62 @@
-.bookmarkify-favicon {
-	width: 1em;
-	height: 1em;
-	vertical-align: -0.15em;
-	margin-right: 0.3em;
-	border-radius: 2px;
-}
-
 .bookmarkify-wide-input {
 	width: 100%;
+}
+
+/*
+ * The "format" button, anchored to the top-right corner of the hovered link.
+ * The container is flush so the button fills the popover rather than floating
+ * inside a box of padding.
+ */
+.bookmarkify-tooltip {
+	display: flex;
+	padding: 0;
+}
+
+.bookmarkify-format-button {
+	padding: 2px 10px;
+	font-size: var(--font-ui-smaller);
+	line-height: 1.4;
+	white-space: nowrap;
+	cursor: pointer;
+	box-shadow: none;
+}
+
+/*
+ * A link being resolved. The background pulses between the two tones below so
+ * the wait reads as activity rather than a stuck link, and the text fades to
+ * signal that it is about to be replaced.
+ */
+.cm-editor .bookmarkify-loading {
+	padding: 1px 3px;
+	border-radius: 3px;
+	color: #9da09a;
+	text-decoration: none;
+	background-color: #f4f5f1;
+	animation: bookmarkify-breathe 1.5s ease-in-out infinite;
+}
+
+@keyframes bookmarkify-breathe {
+	0%,
+	100% {
+		background-color: #f4f5f1;
+	}
+
+	50% {
+		background-color: #e0e2da;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.cm-editor .bookmarkify-loading {
+		animation: none;
+	}
+}
+
+/* Shown briefly when the lookup failed or timed out. */
+.cm-editor .bookmarkify-failed {
+	padding: 1px 3px;
+	border-radius: 3px;
+	color: var(--text-error);
+	text-decoration: none;
+	background-color: var(--background-modifier-error);
 }
