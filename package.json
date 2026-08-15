@@ -1,6 +1,6 @@
 {
   "name": "obsidian-better-link-display",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Turn bare URL links into rich bookmarks showing the site's favicon and title.",
   "main": "main.js",
   "scripts": {
