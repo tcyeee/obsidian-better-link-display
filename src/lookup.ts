@@ -48,10 +48,7 @@ export class SiteLookup {
 		const { accessToken } = this.getConfig();
 		if (!accessToken) return { ok: false, reason: "unconfigured" };
 
-		return this.withTimeout(
-			() => this.request(url),
-			{ ok: false, reason: "timeout" } as LookupOutcome
-		);
+		return this.withTimeout(() => this.request(url), { ok: false, reason: "timeout" });
 	}
 
 	/**
