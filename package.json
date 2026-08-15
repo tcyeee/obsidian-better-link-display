@@ -1,5 +1,5 @@
 {
-  "name": "obsidian-bookmarkify",
+  "name": "obsidian-better-link-display",
   "version": "0.1.0",
   "description": "自动为笔记中的裸链接补全网站图标与标题",
   "main": "main.js",

@@ -1,5 +1,24 @@
-.bookmarkify-wide-input {
+.better-link-display-wide-input {
 	width: 100%;
+}
+
+/*
+ * Every formatted link is placed in a plugin-owned wrapper by the Markdown
+ * post processor. Keeping all styling below that wrapper prevents these rules
+ * from leaking into normal links or links rendered by other plugins.
+ */
+.better-link-display-rich-link-wrapper {
+	border: 1px solid red;
+}
+
+.better-link-display-rich-link-wrapper > a.external-link > img[alt=""] {
+	width: 1em;
+	height: 1em;
+	max-width: 1em;
+	max-height: 1em;
+	margin: 0 0.25em 0 0;
+	vertical-align: -0.125em;
+	object-fit: contain;
 }
 
 /*
@@ -7,12 +26,12 @@
  * The container is flush so the button fills the popover rather than floating
  * inside a box of padding.
  */
-.bookmarkify-tooltip {
+.better-link-display-tooltip {
 	display: flex;
 	padding: 0;
 }
 
-.bookmarkify-format-button {
+.better-link-display-format-button {
 	padding: 2px 10px;
 	font-size: var(--font-ui-smaller);
 	line-height: 1.4;
@@ -26,16 +45,16 @@
  * the wait reads as activity rather than a stuck link, and the text fades to
  * signal that it is about to be replaced.
  */
-.cm-editor .bookmarkify-loading {
+.cm-editor .better-link-display-loading {
 	padding: 1px 3px;
 	border-radius: 3px;
 	color: #9da09a;
 	text-decoration: none;
 	background-color: #f4f5f1;
-	animation: bookmarkify-breathe 1.5s ease-in-out infinite;
+	animation: better-link-display-breathe 1.5s ease-in-out infinite;
 }
 
-@keyframes bookmarkify-breathe {
+@keyframes better-link-display-breathe {
 	0%,
 	100% {
 		background-color: #f4f5f1;
@@ -47,13 +66,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.cm-editor .bookmarkify-loading {
+	.cm-editor .better-link-display-loading {
 		animation: none;
 	}
 }
 
 /* Shown briefly when the lookup failed or timed out. */
-.cm-editor .bookmarkify-failed {
+.cm-editor .better-link-display-failed {
 	padding: 1px 3px;
 	border-radius: 3px;
 	color: var(--text-error);

@@ -1,4 +1,4 @@
-# Bookmarkify
+# Better Link Display
 
 [English](README.md)
 
@@ -40,7 +40,7 @@ https://example.com
 
 1. 在 Obsidian 中安装并启用本插件。
 2. 在 Bookmarkify 网页端的令牌管理页面生成一个 AccessToken。
-3. 打开 **设置 → Bookmarkify**，将令牌粘贴到 **Access token** 字段。若服务不在默认地址上运行，同时填写 **Server URL**。
+3. 打开 **设置 → Better Link Display**，将令牌粘贴到 **Access token** 字段。若服务不在默认地址上运行，同时填写 **Server URL**。
 4. 在编辑模式下打开一篇笔记，把鼠标悬停到裸链接上，点击 **格式化**。
 
 该 AccessToken 是只读凭证，仅能用于查询任意网页的标题与图标，无法读写你的书签或账号数据。

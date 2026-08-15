@@ -9,6 +9,7 @@ import {
 } from "@codemirror/view";
 import { LOOKUP_TIMEOUT_MS, LookupConfig, LookupFailure, LookupOutcome, SiteLookup } from "./lookup";
 import { findExternalLinkAt, toLinkText } from "./urlScan";
+import { FORMATTED_LINK_MARKER } from "./render";
 
 /**
  * The button should feel instant. CodeMirror treats a zero here as "use the
@@ -32,20 +33,20 @@ const markFailed = StateEffect.define<number>();
 const clearMark = StateEffect.define<number>();
 
 interface MarkMeta {
-	bookmarkifyId?: number;
+	betterLinkDisplayId?: number;
 }
 
 function markId(value: { spec: unknown }): number | undefined {
 	const spec = value.spec as MarkMeta | null;
-	return spec?.bookmarkifyId;
+	return spec?.betterLinkDisplayId;
 }
 
 function loadingMark(id: number): Decoration {
-	return Decoration.mark({ class: "bookmarkify-loading", bookmarkifyId: id });
+	return Decoration.mark({ class: "better-link-display-loading", betterLinkDisplayId: id });
 }
 
 function failedMark(id: number): Decoration {
-	return Decoration.mark({ class: "bookmarkify-failed", bookmarkifyId: id });
+	return Decoration.mark({ class: "better-link-display-failed", betterLinkDisplayId: id });
 }
 
 /**
@@ -109,7 +110,7 @@ function hasMarkOverlapping(view: EditorView, from: number, to: number): boolean
  * Owns the hover button and the loading state. Held by the plugin so pending
  * timers can be cancelled on unload.
  */
-export class BookmarkifyEditorFeature {
+export class BetterLinkDisplayEditorFeature {
 	readonly extension: Extension;
 	private nextId = 1;
 	private timers = new Set<number>();
@@ -171,9 +172,9 @@ export class BookmarkifyEditorFeature {
 		source: string,
 		url: string
 	): HTMLElement {
-		const container = createDiv({ cls: "bookmarkify-tooltip" });
+		const container = createDiv({ cls: "better-link-display-tooltip" });
 		const button = container.createEl("button", {
-			cls: "bookmarkify-format-button",
+			cls: "better-link-display-format-button",
 			text: BUTTON_LABEL,
 		});
 		// The editor would otherwise move the caret before the click lands.
@@ -252,17 +253,17 @@ export class BookmarkifyEditorFeature {
 		const { apiBase } = this.getConfig();
 		switch (reason) {
 			case "unconfigured":
-				return "Bookmarkify: set the access token in Settings → Bookmarkify first.";
+				return "Better Link Display: set the access token in Settings → Better Link Display first.";
 			case "auth":
-				return "Bookmarkify: the access token is invalid or has been revoked. Generate a new one and paste it into settings.";
+				return "Better Link Display: the access token is invalid or has been revoked. Generate a new one and paste it into settings.";
 			case "unreachable":
-				return `Bookmarkify: no response from ${apiBase}. Check your connection and the Server URL in settings.`;
+				return `Better Link Display: no response from ${apiBase}. Check your connection and the Server URL in settings.`;
 			case "server":
-				return `Bookmarkify: ${apiBase} answered with an error. Check the service's logs.`;
+				return `Better Link Display: ${apiBase} answered with an error. Check the service's logs.`;
 			case "unresolved":
-				return "Bookmarkify: the service could not read this page's title. The site may be blocking it.";
+				return "Better Link Display: the service could not read this page's title. The site may be blocking it.";
 			case "timeout":
-				return `Bookmarkify: no answer within ${LOOKUP_TIMEOUT_MS / 1000} seconds. The link was left unchanged.`;
+				return `Better Link Display: no answer within ${LOOKUP_TIMEOUT_MS / 1000} seconds. The link was left unchanged.`;
 		}
 	}
 }
@@ -274,7 +275,7 @@ export class BookmarkifyEditorFeature {
  */
 function bookmarkMarkdown(info: { title: string; favicon: string }, url: string): string {
 	const icon = info.favicon ? `![](${info.favicon}) ` : "";
-	return `[${icon}${toLinkText(info.title, url)}](${url})`;
+	return `[${icon}${toLinkText(info.title, url)}](${url} "${FORMATTED_LINK_MARKER}")`;
 }
 
 const FENCE = /^\s{0,3}(?:```|~~~)/;

@@ -2,17 +2,17 @@ import { arrayBufferToBase64, requestUrl } from "obsidian";
 
 /**
  * Icons are written into the note itself, so they are rendered at their natural
- * pixel size wherever the note ends up — including editors that know nothing
- * about Obsidian's `|16` size hint. Encoding at text height is what makes the
- * markdown portable, and it also keeps the embedded base64 short.
+ * pixel size wherever the note ends up. Keep three source pixels for each CSS
+ * pixel at the usual 16px body size so high-density displays stay sharp; the
+ * rendered size is controlled separately in styles.css.
  */
-const ICON_PX = 16;
+const ICON_PX = 48;
 
 /** Refuse to download something that clearly isn't a favicon. */
 const MAX_SOURCE_BYTES = 512 * 1024;
 
-/** A downscaled icon is ~1KB; anything far past that means downscaling failed. */
-const MAX_INLINE_LENGTH = 8 * 1024;
+/** Cap pathological output without rejecting normal 48px PNG favicons. */
+const MAX_INLINE_LENGTH = 32 * 1024;
 
 /**
  * Turn whatever the service returned into a self-contained `data:` URL.
@@ -51,8 +51,8 @@ async function download(src: string): Promise<string> {
 
 /**
  * Re-encode to {@link ICON_PX} square. The service returns icons at whatever
- * size the site published — 144px is common, which is nine times the pixels
- * actually needed and would bloat every note it is pasted into.
+ * size the site published. Keeping 48px preserves enough detail for 3x
+ * displays without embedding the often much larger original image.
  */
 async function downscale(dataUrl: string): Promise<string> {
 	const image = createEl("img");

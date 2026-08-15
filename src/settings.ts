@@ -1,21 +1,21 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
-import type BookmarkifyPlugin from "../main";
+import type BetterLinkDisplayPlugin from "../main";
 import { DEFAULT_API_BASE } from "./api";
 
-export interface BookmarkifySettings {
+export interface BetterLinkDisplaySettings {
 	apiBase: string;
 	accessToken: string;
 }
 
-export const DEFAULT_SETTINGS: BookmarkifySettings = {
+export const DEFAULT_SETTINGS: BetterLinkDisplaySettings = {
 	apiBase: DEFAULT_API_BASE,
 	accessToken: "",
 };
 
-export class BookmarkifySettingTab extends PluginSettingTab {
-	plugin: BookmarkifyPlugin;
+export class BetterLinkDisplaySettingTab extends PluginSettingTab {
+	plugin: BetterLinkDisplayPlugin;
 
-	constructor(app: App, plugin: BookmarkifyPlugin) {
+	constructor(app: App, plugin: BetterLinkDisplayPlugin) {
 		super(app, plugin);
 		this.plugin = plugin;
 	}
@@ -31,7 +31,7 @@ export class BookmarkifySettingTab extends PluginSettingTab {
 					`Defaults to ${DEFAULT_API_BASE}.`
 			)
 			.addText((text) => {
-				text.inputEl.addClass("bookmarkify-wide-input");
+				text.inputEl.addClass("better-link-display-wide-input");
 				text.setPlaceholder(DEFAULT_API_BASE)
 					.setValue(this.plugin.settings.apiBase)
 					.onChange(async (value) => {
@@ -49,7 +49,7 @@ export class BookmarkifySettingTab extends PluginSettingTab {
 			)
 			.addText((text) => {
 				text.inputEl.type = "password";
-				text.inputEl.addClass("bookmarkify-wide-input");
+				text.inputEl.addClass("better-link-display-wide-input");
 				text.setPlaceholder("Paste your access token")
 					.setValue(this.plugin.settings.accessToken)
 					.onChange(async (value) => {

@@ -1,4 +1,4 @@
-# Bookmarkify
+# Better Link Display
 
 [中文](README.zh.md)
 
@@ -14,7 +14,7 @@ https://example.com
 <https://example.com>
 ```
 
-Click it and the link enters a loading state — a soft grey, gently pulsing highlight — for up to ten seconds while Bookmarkify looks the page up. On success the URL is rewritten in place as a markdown link with the site's favicon embedded directly in it:
+Click it and the link enters a loading state — a soft grey, gently pulsing highlight — for up to ten seconds while Better Link Display looks the page up. On success the URL is rewritten in place as a markdown link with the site's favicon embedded directly in it:
 
 ```
 [![](data:image/png;base64,iVBORw0…) Example Domain](https://example.com)
@@ -40,7 +40,7 @@ The service hands back favicons as short-lived signed CDN links, so the plugin d
 
 1. Install and enable the plugin in Obsidian.
 2. Generate an access token from the Bookmarkify web service's token management page.
-3. Open **Settings → Bookmarkify** and paste the token into the **Access token** field. If your service does not run on the default address, set **Server URL** as well.
+3. Open **Settings → Better Link Display** and paste the token into the **Access token** field. If your service does not run on the default address, set **Server URL** as well.
 4. Open a note in editing mode, hover an external link, and click **格式化**.
 
 The access token is read-only: it can only be used to look up page titles/favicons for arbitrary URLs, and cannot read or modify your bookmarks or account data.
