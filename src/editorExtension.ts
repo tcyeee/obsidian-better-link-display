@@ -8,7 +8,7 @@ import {
 	hoverTooltip,
 } from "@codemirror/view";
 import { LOOKUP_TIMEOUT_MS, LookupConfig, LookupFailure, LookupOutcome, SiteLookup } from "./lookup";
-import { findBareUrlAt, toLinkText } from "./urlScan";
+import { findExternalLinkAt, toLinkText } from "./urlScan";
 
 /**
  * The button should feel instant. CodeMirror treats a zero here as "use the
@@ -137,11 +137,12 @@ export class BookmarkifyEditorFeature {
 				const line = view.state.doc.lineAt(pos);
 				if (inVerbatimBlock(view.state, line.number)) return null;
 
-				const hit = findBareUrlAt(line.text, pos - line.from);
+				const hit = findExternalLinkAt(line.text, pos - line.from);
 				if (!hit) return null;
 
 				const from = line.from + hit.from;
 				const to = line.from + hit.to;
+				const source = line.text.slice(hit.from, hit.to);
 				if (hasMarkOverlapping(view, from, to)) return null;
 
 				return {
@@ -152,7 +153,7 @@ export class BookmarkifyEditorFeature {
 					end: to,
 					above: true,
 					create: () => ({
-						dom: this.tooltipDom(view, from, to, hit.url),
+						dom: this.tooltipDom(view, from, to, source, hit.url),
 						getCoords: (fallback: number) =>
 							view.coordsAtPos(to, -1) ??
 							view.coordsAtPos(fallback) ?? { top: 0, bottom: 0, left: 0, right: 0 },
@@ -163,7 +164,13 @@ export class BookmarkifyEditorFeature {
 		);
 	}
 
-	private tooltipDom(view: EditorView, from: number, to: number, url: string): HTMLElement {
+	private tooltipDom(
+		view: EditorView,
+		from: number,
+		to: number,
+		source: string,
+		url: string
+	): HTMLElement {
 		const container = createDiv({ cls: "bookmarkify-tooltip" });
 		const button = container.createEl("button", {
 			cls: "bookmarkify-format-button",
@@ -175,7 +182,7 @@ export class BookmarkifyEditorFeature {
 			event.preventDefault();
 			event.stopPropagation();
 			view.dispatch({ effects: closeHoverTooltips });
-			void this.format(view, from, to, url);
+			void this.format(view, from, to, source, url);
 		});
 		return container;
 	}
@@ -184,11 +191,12 @@ export class BookmarkifyEditorFeature {
 		view: EditorView,
 		from: number,
 		to: number,
+		source: string,
 		url: string
 	): Promise<void> {
 		// The tooltip may have been open across an edit; only act on the exact
 		// text the button was offered for.
-		if (view.state.sliceDoc(from, to) !== url) return;
+		if (view.state.sliceDoc(from, to) !== source) return;
 		if (hasMarkOverlapping(view, from, to)) return;
 
 		const id = this.nextId++;
@@ -214,7 +222,7 @@ export class BookmarkifyEditorFeature {
 		if (!current) return;
 		// The user may have edited the URL away while the request was in flight;
 		// rewriting whatever now sits at those offsets would corrupt the note.
-		if (view.state.sliceDoc(current.from, current.to) !== url) {
+		if (view.state.sliceDoc(current.from, current.to) !== source) {
 			view.dispatch({ effects: clearMark.of(id) });
 			return;
 		}
@@ -297,4 +305,3 @@ function inVerbatimBlock(state: EditorState, lineNumber: number): boolean {
 
 	return inFence || inFrontmatter;
 }
-

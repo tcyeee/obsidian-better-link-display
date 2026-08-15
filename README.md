@@ -2,14 +2,16 @@
 
 [中文](README.zh.md)
 
-An Obsidian plugin that turns a bare URL in your notes into a proper bookmark — the site's title and favicon — with one click.
+An Obsidian plugin that turns an external link in your notes into a proper bookmark — the site's title and favicon — with one click.
 
 ## What it does
 
-Hover a bare URL while editing a note and a **格式化** button appears above it:
+Hover an external link while editing a note and a **格式化** button appears above it. Bare URLs, Markdown links, and autolinks are supported:
 
 ```
 https://example.com
+[Example](https://example.com)
+<https://example.com>
 ```
 
 Click it and the link enters a loading state — a soft grey, gently pulsing highlight — for up to ten seconds while Bookmarkify looks the page up. On success the URL is rewritten in place as a markdown link with the site's favicon embedded directly in it:
@@ -39,13 +41,13 @@ The service hands back favicons as short-lived signed CDN links, so the plugin d
 1. Install and enable the plugin in Obsidian.
 2. Generate an access token from the Bookmarkify web service's token management page.
 3. Open **Settings → Bookmarkify** and paste the token into the **Access token** field. If your service does not run on the default address, set **Server URL** as well.
-4. Open a note in editing mode, hover a bare URL, and click **格式化**.
+4. Open a note in editing mode, hover an external link, and click **格式化**.
 
 The access token is read-only: it can only be used to look up page titles/favicons for arbitrary URLs, and cannot read or modify your bookmarks or account data.
 
 ## Limitations
 
-- The hover button only appears in editing mode (Live Preview or Source mode), on a URL that stands on its own — not inside code blocks, frontmatter, or an existing markdown link.
+- The hover button only appears in editing mode (Live Preview or Source mode). Code blocks, frontmatter, and external image embeds are ignored.
 - The embedded base64 makes the line long in Source mode. That is the price of a note that renders anywhere; Live Preview and Reading view show only the icon and title.
 - Only `https:` icons are downloaded, and only if they decode as an image, so a misconfigured endpoint can't turn a note into a tracking pixel.
 
