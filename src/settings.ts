@@ -161,7 +161,11 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 			return;
 		}
 
-		button.setDisabled(true).setButtonText(t("token.testing"));
+		// `ButtonComponent.setDisabled` only exists from Obsidian 1.2.3, and the
+		// manifest promises 1.0.0 — the underlying property is the same thing and
+		// costs nothing in reach.
+		button.buttonEl.disabled = true;
+		button.setButtonText(t("token.testing"));
 
 		let outcome: VerifyOutcome;
 		try {
@@ -172,7 +176,7 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 
 		// The tab may have been re-rendered or closed while the request ran.
 		if (!button.buttonEl.isConnected) return;
-		button.setDisabled(false);
+		button.buttonEl.disabled = false;
 
 		// The button can only say that something went wrong; which of the failures
 		// it was needs a sentence, so those keep their notice.

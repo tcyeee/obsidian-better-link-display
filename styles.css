@@ -46,17 +46,20 @@
 
 /*
  * A link this plugin formatted: an external link whose only marker is the inlined
- * favicon it embedded. Matching on the `data:` source keeps these rules to links
- * the plugin wrote itself, so they cannot affect ordinary links that happen to
- * contain a picture. These selectors are for Reading view, where the favicon is
- * nested inside the anchor; Live Preview has a different DOM, handled further
- * down. Neither needs anything stored in the note.
+ * favicon it embedded. Nothing identifies it in the note, so `src/bookmarkMarks.ts`
+ * recognises the favicon and puts the classes below on the elements around it —
+ * plugin review rejects `:has()`, which is what these rules used to reach back up
+ * the tree with. The marks are still derived from the icon alone, so they cannot
+ * land on ordinary links that happen to contain a picture.
+ *
+ * These selectors are for Reading view, where the favicon is nested inside the
+ * anchor; Live Preview has a different DOM, handled further down.
  *
  * The anchor is toned down to read as a formatted title rather than a raw link:
  * muted text, no underline, and Obsidian's trailing external-link icon removed
  * (its background image and the padding reserved for it).
  */
-a.external-link:has(> img[src^="data:image/"]) {
+a.external-link.better-link-display-bookmark {
 	color: var(--text-muted);
 	text-decoration: none;
 	background-image: none;
@@ -80,8 +83,9 @@ a.external-link > img[src^="data:image/"] {
  * inlined `data:` favicon into a full image embed and the link text into a
  * `.cm-link` span — siblings inside one `.cm-line`, never nested in an anchor.
  * The rules above therefore match nothing here, so the toned-down look is
- * re-created below, still keyed off the `data:` favicon the plugin embeds so
- * ordinary links and images in the editor are left alone.
+ * re-created below, off two marks the same module puts there: one on the embed
+ * holding the favicon, one on the line holding the bookmark. Ordinary links and
+ * images in the editor carry neither and are left alone.
  */
 
 /* The favicon embed, shrunk to an inline 16px icon from its 48px intrinsic size. */
@@ -101,12 +105,12 @@ a.external-link > img[src^="data:image/"] {
  * baseline and the icon sits low — and drop the resize handle and hover
  * controls a favicon has no use for.
  */
-.cm-editor .image-embed:has(> .image-wrapper > img[src^="data:image/"]) {
+.cm-editor .image-embed.better-link-display-embed {
 	vertical-align: middle;
 }
 
-.cm-editor .image-embed:has(> .image-wrapper > img[src^="data:image/"]) .image-resize-corner,
-.cm-editor .image-embed:has(> .image-wrapper > img[src^="data:image/"]) .embed-actions {
+.cm-editor .image-embed.better-link-display-embed .image-resize-corner,
+.cm-editor .image-embed.better-link-display-embed .embed-actions {
 	display: none;
 }
 
@@ -117,13 +121,13 @@ a.external-link > img[src^="data:image/"] {
  * targeted directly — styling only the outer `.cm-link` leaves the child's own
  * decoration and colour untouched.
  */
-.cm-editor .cm-line:has(img[src^="data:image/"]) .cm-link,
-.cm-editor .cm-line:has(img[src^="data:image/"]) .cm-underline {
+.cm-editor .cm-line.better-link-display-line .cm-link,
+.cm-editor .cm-line.better-link-display-line .cm-underline {
 	color: var(--text-muted);
 	text-decoration: none;
 }
 
-.cm-editor .cm-line:has(img[src^="data:image/"]) .external-link {
+.cm-editor .cm-line.better-link-display-line .external-link {
 	background-image: none;
 	padding-inline-end: 0;
 }
@@ -131,8 +135,8 @@ a.external-link > img[src^="data:image/"] {
 /*
  * Optional appearance, switched on in settings and carried by a class on `body`
  * so both views react to the toggle without re-rendering anything. Every rule
- * below keys off the same inlined favicon as the rules above, so an option only
- * ever reaches links this plugin formatted.
+ * below keys off the same marks as the rules above, so an option only ever
+ * reaches links this plugin formatted.
  *
  * In Reading view the whole bookmark is one anchor, so the plate goes there.
  * In Live Preview the icon and the text are separate elements, and which one
@@ -140,38 +144,38 @@ a.external-link > img[src^="data:image/"] {
  * outermost of them is styled and anything nested inside it is left alone,
  * keeping the result a single plate rather than a box within a box.
  */
-body.better-link-display-background a.external-link:has(> img[src^="data:image/"]),
+body.better-link-display-background a.external-link.better-link-display-bookmark,
 body.better-link-display-background
 	.cm-editor
-	.cm-line:has(img[src^="data:image/"])
+	.cm-line.better-link-display-line
 	.cm-link:not(.cm-link *),
 body.better-link-display-background
 	.cm-editor
-	.cm-line:has(img[src^="data:image/"])
+	.cm-line.better-link-display-line
 	.cm-underline:not(.cm-link *),
 body.better-link-display-background
 	.cm-editor
-	.cm-line:has(img[src^="data:image/"])
-	.image-embed:has(> .image-wrapper > img[src^="data:image/"]):not(.cm-link *) {
+	.cm-line.better-link-display-line
+	.image-embed.better-link-display-embed:not(.cm-link *) {
 	background-color: var(--background-secondary);
 	border-radius: var(--radius-s);
 	padding-block: 1px;
 	padding-inline: 5px;
 }
 
-body.better-link-display-border a.external-link:has(> img[src^="data:image/"]),
+body.better-link-display-border a.external-link.better-link-display-bookmark,
 body.better-link-display-border
 	.cm-editor
-	.cm-line:has(img[src^="data:image/"])
+	.cm-line.better-link-display-line
 	.cm-link:not(.cm-link *),
 body.better-link-display-border
 	.cm-editor
-	.cm-line:has(img[src^="data:image/"])
+	.cm-line.better-link-display-line
 	.cm-underline:not(.cm-link *),
 body.better-link-display-border
 	.cm-editor
-	.cm-line:has(img[src^="data:image/"])
-	.image-embed:has(> .image-wrapper > img[src^="data:image/"]):not(.cm-link *) {
+	.cm-line.better-link-display-line
+	.image-embed.better-link-display-embed:not(.cm-link *) {
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-s);
 	padding-block: 1px;

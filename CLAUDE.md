@@ -24,7 +24,12 @@ An Obsidian plugin that rewrites an external link in a note into a Markdown book
 
 **The central invariant: nothing plugin-specific is ever written into the user's note.** The output of `bookmarkMarkdown()` is ordinary Markdown — `[![](data:image/png;base64,…) Title](url)` — so notes keep rendering with the plugin disabled, uninstalled, or in another app. Two consequences ripple through the codebase:
 
-- `styles.css` cannot key off a marker class. It recognises formatted links solely by `img[src^="data:image/"]`, and must do so **twice**: Reading view nests the icon inside `a.external-link`, while Live Preview renders it as a sibling `.image-embed` next to a `.cm-link` inside one `.cm-line`. A styling change to one view almost always needs the mirrored rule for the other.
+- Nothing in the note tells `styles.css` which links are formatted, and `:has()` — the obvious way to select a link *containing* the inlined icon — is rejected by plugin review. `src/bookmarkMarks.ts` bridges that gap and is the only thing the stylesheet matches on. It works **three** ways, because the two views render the same Markdown differently and CodeMirror does not allow all of them:
+  - Reading view nests the icon inside `a.external-link` → a Markdown post-processor adds `better-link-display-bookmark` to the anchor.
+  - Live Preview renders the icon as an `.image-embed` next to a `.cm-link` inside one `.cm-line`. The embed is inside an Obsidian widget, which CodeMirror's mutation observer ignores, so `better-link-display-embed` is added to it in the DOM — from `requestMeasure`, since a `ViewPlugin`'s `update` runs *before* CodeMirror syncs its DOM.
+  - The `.cm-line` itself belongs to CodeMirror, which wipes a foreign class off it on the next sync, so `better-link-display-line` is a `Decoration.line` computed from the document text (`](data:image/`), skipping lines that intersect the selection because Live Preview shows those as raw Markdown.
+
+  A styling change to one view almost always needs the mirrored rule for the other, and a new rule needs its mark added to that module rather than a `:has()`.
 - There is no "unformat" action, and no state to migrate.
 
 **Flow of one format** (hover button or the `format-link-under-cursor` command, both entering `BetterLinkDisplayEditorFeature`):
@@ -46,6 +51,6 @@ Security limits worth preserving when touching `favicon.ts` / `urlScan.ts`: only
 
 ## Conventions
 
-Tabs, and comments that explain *why* a constraint exists rather than what the line does — match that density. Obsidian's plugin review rules apply: no `!important`, 6-digit hex colours, no inline style assignment or created `<style>` elements (styling goes through classes in `styles.css`), no `innerHTML`. The `/obsidian-plugin-lint` skill checks these.
+Tabs, and comments that explain *why* a constraint exists rather than what the line does — match that density. Obsidian's plugin review rules apply: no `!important`, 6-digit hex colours, no `:has()`, no inline style assignment or created `<style>` elements (styling goes through classes in `styles.css`), no `innerHTML`, and no API newer than the manifest's `minAppVersion` of 1.0.0 (which is why the settings Test button toggles `buttonEl.disabled` instead of `setDisabled`, added in 1.2.3). The `/obsidian-plugin-lint` skill checks these.
 
 Both `README.md` and `README.zh.md` describe user-visible behaviour and are kept in sync; `api.md` documents the service contract.

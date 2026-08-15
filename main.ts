@@ -7,6 +7,7 @@ import {
 import { isLanguage, setLanguage, t } from "./src/i18n";
 import { SiteLookup } from "./src/lookup";
 import { BetterLinkDisplayEditorFeature } from "./src/editorExtension";
+import { bookmarkMarkers, markReadingViewBookmarks } from "./src/bookmarkMarks";
 
 /** Set on `body` while the matching appearance option is on. */
 const BACKGROUND_CLASS = "better-link-display-background";
@@ -25,6 +26,11 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 
 		this.addSettingTab(new BetterLinkDisplaySettingTab(this.app, this, lookup));
 		this.registerEditorExtension(this.editorFeature.extension);
+		// A formatted bookmark carries no marker in the note, so the classes
+		// styles.css needs are put on the rendered elements instead — once per
+		// view, because the two render the same Markdown differently.
+		this.registerEditorExtension(bookmarkMarkers);
+		this.registerMarkdownPostProcessor((el) => markReadingViewBookmarks(el));
 		this.addCommand({
 			id: "format-link-under-cursor",
 			// Obsidian reads the name once, so this follows a language change only

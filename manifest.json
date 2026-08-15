@@ -1,7 +1,7 @@
 {
 	"id": "better-link-display",
 	"name": "Better Link Display",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"minAppVersion": "1.0.0",
 	"description": "Turn bare URL links into rich bookmarks showing the site's favicon and title.",
 	"author": "tcyeee",
