@@ -1,4 +1,4 @@
-import { fetchSiteInfo, SiteInfo } from "./api";
+import { fetchSiteInfo, SiteInfo, verifyToken } from "./api";
 
 /**
  * The service documents a ~300ms rate limit per token. Requests are issued one
@@ -11,7 +11,6 @@ const MIN_REQUEST_INTERVAL_MS = 350;
 export const LOOKUP_TIMEOUT_MS = 10_000;
 
 export interface LookupConfig {
-	apiBase: string;
 	accessToken: string;
 }
 
@@ -24,6 +23,10 @@ export type LookupFailure =
 	| "timeout";
 
 export type LookupOutcome = { ok: true; info: SiteInfo } | { ok: false; reason: LookupFailure };
+
+export type VerifyOutcome =
+	| { ok: true }
+	| { ok: false; reason: Exclude<LookupFailure, "unresolved"> };
 
 function delay(ms: number): Promise<void> {
 	return new Promise((resolve) => window.setTimeout(resolve, ms));
@@ -42,15 +45,37 @@ export class SiteLookup {
 	 * the caller's loading state can never outlast the promised ten seconds.
 	 */
 	async resolve(url: string): Promise<LookupOutcome> {
-		const { apiBase, accessToken } = this.getConfig();
-		if (!apiBase || !accessToken) return { ok: false, reason: "unconfigured" };
+		const { accessToken } = this.getConfig();
+		if (!accessToken) return { ok: false, reason: "unconfigured" };
 
+		return this.withTimeout(
+			() => this.request(url),
+			{ ok: false, reason: "timeout" } as LookupOutcome
+		);
+	}
+
+	/**
+	 * Ask the service whether a token is accepted. Goes through the same queue as
+	 * a real lookup so pressing Test while links are resolving cannot outrun the
+	 * rate limit and fail for a reason that has nothing to do with the token.
+	 */
+	async verify(token: string): Promise<VerifyOutcome> {
+		if (!token) return { ok: false, reason: "unconfigured" };
+
+		return this.withTimeout(async (): Promise<VerifyOutcome> => {
+			const result = await verifyToken(token);
+			return result.ok ? { ok: true } : { ok: false, reason: result.failure };
+		}, { ok: false, reason: "timeout" });
+	}
+
+	/** Run a queued task, resolving to `onTimeout` if it takes too long. */
+	private async withTimeout<T>(task: () => Promise<T>, onTimeout: T): Promise<T> {
 		let timer = 0;
-		const timeout = new Promise<LookupOutcome>((resolve) => {
-			timer = window.setTimeout(() => resolve({ ok: false, reason: "timeout" }), LOOKUP_TIMEOUT_MS);
+		const timeout = new Promise<T>((resolve) => {
+			timer = window.setTimeout(() => resolve(onTimeout), LOOKUP_TIMEOUT_MS);
 		});
 		try {
-			return await Promise.race([this.schedule(() => this.request(url)), timeout]);
+			return await Promise.race([this.schedule(task), timeout]);
 		} finally {
 			// A request that answered in 200ms must not leave a ten-second timer
 			// behind it; those accumulate one per formatted link.
@@ -59,8 +84,8 @@ export class SiteLookup {
 	}
 
 	private async request(url: string): Promise<LookupOutcome> {
-		const { apiBase, accessToken } = this.getConfig();
-		const result = await fetchSiteInfo(apiBase, url, accessToken);
+		const { accessToken } = this.getConfig();
+		const result = await fetchSiteInfo(url, accessToken);
 		return result.ok
 			? { ok: true, info: result.info }
 			: { ok: false, reason: result.failure };

@@ -1,9 +1,8 @@
 # Service contract
 
 Better Link Display resolves page titles and icons through one read-only HTTP
-endpoint. Any service that implements the contract below can be used by pointing
-**Server URL** at it; the default is the hosted instance at
-`https://bookmarkify.cc/api`.
+endpoint on the hosted service at `https://bookmarkify.cc/api`. The address is
+fixed — there is nothing to configure beyond the access token.
 
 ## Authentication
 
@@ -21,12 +20,15 @@ browser history, and it should only travel over HTTPS.
 ## Look up a page's title and icon
 
 ```
-GET {base}/extension/site-info?url=<url-encoded page URL>
+GET https://bookmarkify.cc/api/extension/site-info?url=<url-encoded page URL>
 ```
 
-The plugin sends `{base}` exactly as configured, with trailing slashes stripped.
 On the hosted service nginx forwards `/api/` to the backend and strips the
-prefix, so a local backend is reached at `http://127.0.0.1:8001` with no `/api`.
+prefix, so the backend itself sees `/extension/site-info`.
+
+The **Test** button in settings calls this same endpoint with a fixed probe URL
+and only inspects the authentication outcome: a page the service cannot resolve
+still proves the token is valid.
 
 ```bash
 curl -H "X-Extension-Token: YOUR_TOKEN" \

@@ -33,19 +33,21 @@ Nothing happens without a click — opening a note never issues a single request
 ## Requirements
 
 - Obsidian 1.0 or later. On mobile, use the command rather than the hover button.
-- Access to a Bookmarkify service exposing the `/extension/site-info` endpoint. Defaults to the hosted service at `https://bookmarkify.cc/api`; point **Server URL** at your own instance (e.g. `http://127.0.0.1:8001` when running the API locally) if you'd rather not use it.
+- A connection to the hosted Bookmarkify service at `https://bookmarkify.cc/api`, which resolves page titles and icons.
 - An **access token** generated from that service, used to authenticate requests.
 
 See [api.md](api.md) for the API contract (`GET /extension/site-info?url=...`, `X-Extension-Token` header).
 
-The service hands back favicons as short-lived signed CDN links, so the plugin downloads the image once at format time and stores it inline. That is the only request it ever makes to a host other than the configured server.
+The service hands back favicons as short-lived signed CDN links, so the plugin downloads the image once at format time and stores it inline. That is the only request it ever makes to a host other than the service itself.
 
 ## Setup
 
 1. Install and enable the plugin in Obsidian.
 2. Generate an access token from the Bookmarkify web service's token management page.
-3. Open **Settings → Better Link Display** and paste the token into the **Access token** field. If your service does not run on the default address, set **Server URL** as well.
+3. Open **Settings → Better Link Display** and paste the token into the **Access token** field, then press **Test** to confirm the service accepts it.
 4. Open a note in editing mode, hover an external link, and click **Format** — or put the caret on a link and run **Format link under cursor**.
+
+Under **General**, the **Language** setting switches the plugin's own settings and messages between English and 中文; it defaults to your Obsidian interface language. The command name follows after Obsidian is restarted.
 
 The access token is read-only: it can only be used to look up page titles/favicons for arbitrary URLs, and cannot read or modify your bookmarks or account data.
 

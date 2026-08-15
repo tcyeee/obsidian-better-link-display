@@ -33,19 +33,21 @@ https://example.com
 ## 依赖条件
 
 - Obsidian 1.0 及以上版本。移动端没有 hover，请使用命令而非悬浮按钮。
-- 可访问的 Bookmarkify 服务（提供 `/extension/site-info` 接口）。默认使用线上地址 `https://bookmarkify.cc/api`；若想连自己的实例（例如本地跑 API 时的 `http://127.0.0.1:8001`），在 **Server URL** 里改掉即可。
+- 能访问 Bookmarkify 线上服务 `https://bookmarkify.cc/api`，由它负责解析页面标题与图标。
 - 一个从该服务生成的 **AccessToken**，用于请求鉴权。
 
 接口约定详见 [api.md](api.md)（`GET /extension/site-info?url=...`，请求头 `X-Extension-Token`）。
 
-服务返回的图标是有效期约一小时的签名 CDN 链接，因此插件在格式化时把图片下载下来内联保存。这是它唯一一次向所配置服务器之外的主机发请求。
+服务返回的图标是有效期约一小时的签名 CDN 链接，因此插件在格式化时把图片下载下来内联保存。这是它唯一一次向该服务之外的主机发请求。
 
 ## 使用步骤
 
 1. 在 Obsidian 中安装并启用本插件。
 2. 在 Bookmarkify 网页端的令牌管理页面生成一个 AccessToken。
-3. 打开 **设置 → Better Link Display**，将令牌粘贴到 **Access token** 字段。若服务不在默认地址上运行，同时填写 **Server URL**。
-4. 在编辑模式下打开一篇笔记，把鼠标悬停到外链上点击 **Format**；或者把光标放在链接上，执行 **Format link under cursor** 命令。
+3. 打开 **设置 → Better Link Display**，将令牌粘贴到 **访问令牌** 字段，然后点 **测试** 确认服务能接受它。
+4. 在编辑模式下打开一篇笔记，把鼠标悬停到外链上点击 **格式化**；或者把光标放在链接上，执行 **格式化光标处的链接** 命令。
+
+**通用 → 语言** 可以在中文和 English 之间切换插件自己的设置与提示，默认跟随 Obsidian 的界面语言。命令名称要重启 Obsidian 后才会跟着变。
 
 该 AccessToken 是只读凭证，仅能用于查询任意网页的标题与图标，无法读写你的书签或账号数据。
 

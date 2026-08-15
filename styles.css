@@ -1,5 +1,30 @@
-.better-link-display-wide-input {
+/*
+ * A setting whose control is too wide to sit beside its description — the name
+ * and description keep the top row, the control gets a full-width one below.
+ */
+.better-link-display-stacked-setting {
+	display: block;
+}
+
+.better-link-display-stacked-setting .setting-item-control {
+	justify-content: flex-start;
 	width: 100%;
+	padding-top: var(--size-4-2);
+}
+
+/*
+ * The token field shares that row with the Test button, so it takes whatever
+ * space the button leaves rather than a fixed width, and stops shrinking before
+ * a pasted token becomes unreadable.
+ */
+.better-link-display-wide-input {
+	flex: 1 1 auto;
+	min-width: 12em;
+}
+
+/* Shown on the Test button for a few seconds after a token checks out. */
+.better-link-display-test-success {
+	color: var(--text-success);
 }
 
 /*
@@ -84,6 +109,56 @@ a.external-link > img[src^="data:image/"] {
 .cm-editor .cm-line:has(img[src^="data:image/"]) .external-link {
 	background-image: none;
 	padding-inline-end: 0;
+}
+
+/*
+ * Optional appearance, switched on in settings and carried by a class on `body`
+ * so both views react to the toggle without re-rendering anything. Every rule
+ * below keys off the same inlined favicon as the rules above, so an option only
+ * ever reaches links this plugin formatted.
+ *
+ * In Reading view the whole bookmark is one anchor, so the plate goes there.
+ * In Live Preview the icon and the text are separate elements, and which one
+ * contains the other depends on how CodeMirror tokenised the line — so the
+ * outermost of them is styled and anything nested inside it is left alone,
+ * keeping the result a single plate rather than a box within a box.
+ */
+body.better-link-display-background a.external-link:has(> img[src^="data:image/"]),
+body.better-link-display-background
+	.cm-editor
+	.cm-line:has(img[src^="data:image/"])
+	.cm-link:not(.cm-link *),
+body.better-link-display-background
+	.cm-editor
+	.cm-line:has(img[src^="data:image/"])
+	.cm-underline:not(.cm-link *),
+body.better-link-display-background
+	.cm-editor
+	.cm-line:has(img[src^="data:image/"])
+	.image-embed:has(> .image-wrapper > img[src^="data:image/"]):not(.cm-link *) {
+	background-color: var(--background-secondary);
+	border-radius: var(--radius-s);
+	padding-block: 1px;
+	padding-inline: 5px;
+}
+
+body.better-link-display-border a.external-link:has(> img[src^="data:image/"]),
+body.better-link-display-border
+	.cm-editor
+	.cm-line:has(img[src^="data:image/"])
+	.cm-link:not(.cm-link *),
+body.better-link-display-border
+	.cm-editor
+	.cm-line:has(img[src^="data:image/"])
+	.cm-underline:not(.cm-link *),
+body.better-link-display-border
+	.cm-editor
+	.cm-line:has(img[src^="data:image/"])
+	.image-embed:has(> .image-wrapper > img[src^="data:image/"]):not(.cm-link *) {
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	padding-block: 1px;
+	padding-inline: 5px;
 }
 
 /*

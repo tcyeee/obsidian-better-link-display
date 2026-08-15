@@ -7,9 +7,11 @@ import {
 	closeHoverTooltips,
 	hoverTooltip,
 } from "@codemirror/view";
-import { LOOKUP_TIMEOUT_MS, LookupConfig, LookupFailure, LookupOutcome, SiteLookup } from "./lookup";
+import { LOOKUP_TIMEOUT_MS, LookupFailure, LookupOutcome, SiteLookup } from "./lookup";
 import { findExternalLinkAt, toLinkDestination, toLinkText } from "./urlScan";
 import { inVerbatimBlock } from "./verbatim";
+import { t } from "./i18n";
+import { API_BASE } from "./api";
 
 /**
  * The button should feel instant. CodeMirror treats a zero here as "use the
@@ -22,8 +24,6 @@ const FAILURE_HIGHLIGHT_MS = 2500;
 
 /** Failure notices explain a fix, so they need longer than Obsidian's default. */
 const FAILURE_NOTICE_MS = 8000;
-
-const BUTTON_LABEL = "Format";
 
 /** Marks the URL that is currently being resolved. */
 const startLoading = StateEffect.define<{ id: number; from: number; to: number }>();
@@ -116,10 +116,7 @@ export class BetterLinkDisplayEditorFeature {
 	private nextId = 1;
 	private timers = new Set<number>();
 
-	constructor(
-		private readonly lookup: SiteLookup,
-		private readonly getConfig: () => LookupConfig
-	) {
+	constructor(private readonly lookup: SiteLookup) {
 		this.extension = [pendingField, this.tooltip()];
 	}
 
@@ -201,7 +198,7 @@ export class BetterLinkDisplayEditorFeature {
 		const container = createDiv({ cls: "better-link-display-tooltip" });
 		const button = container.createEl("button", {
 			cls: "better-link-display-format-button",
-			text: BUTTON_LABEL,
+			text: t("button.format"),
 		});
 		// The editor would otherwise move the caret before the click lands.
 		button.addEventListener("mousedown", (event) => event.preventDefault());
@@ -274,20 +271,19 @@ export class BetterLinkDisplayEditorFeature {
 	 * from the user, and a single generic message hides which one happened.
 	 */
 	private failureMessage(reason: LookupFailure): string {
-		const { apiBase } = this.getConfig();
 		switch (reason) {
 			case "unconfigured":
-				return "Better Link Display: set the access token in Settings → Better Link Display first.";
+				return t("failure.unconfigured");
 			case "auth":
-				return "Better Link Display: the access token is invalid or has been revoked. Generate a new one and paste it into settings.";
+				return t("failure.auth");
 			case "unreachable":
-				return `Better Link Display: no response from ${apiBase}. Check your connection and the Server URL in settings.`;
+				return t("failure.unreachable", { base: API_BASE });
 			case "server":
-				return `Better Link Display: ${apiBase} answered with an error. Check the service's logs.`;
+				return t("failure.server", { base: API_BASE });
 			case "unresolved":
-				return "Better Link Display: the service could not read this page's title. The site may be blocking it.";
+				return t("failure.unresolved");
 			case "timeout":
-				return `Better Link Display: no answer within ${LOOKUP_TIMEOUT_MS / 1000} seconds. The link was left unchanged.`;
+				return t("failure.timeout", { seconds: LOOKUP_TIMEOUT_MS / 1000 });
 		}
 	}
 }
