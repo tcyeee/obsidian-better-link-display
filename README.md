@@ -44,7 +44,7 @@ The bookmark is still just a normal link: click it and it opens the page.
 2. Put all three into `<your vault>/.obsidian/plugins/better-link-display/` (create the folder if it isn't there).
 3. Restart Obsidian, then enable the plugin under **Settings → Community plugins**.
 
-Works on Obsidian 1.0 and later, on desktop and mobile.
+Works on Obsidian 1.13 and later, on desktop and mobile.
 
 ## First-time setup
 

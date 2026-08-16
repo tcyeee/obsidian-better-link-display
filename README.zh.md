@@ -44,7 +44,7 @@ https://example.com
 2. 把它们放进 `<你的仓库>/.obsidian/plugins/better-link-display/` 文件夹（没有就新建一个）。
 3. 重启 Obsidian，在 **设置 → 第三方插件** 里启用。
 
-支持 Obsidian 1.0 及以上版本，电脑端和手机端都能用。
+支持 Obsidian 1.13 及以上版本，电脑端和手机端都能用。
 
 ## 首次配置
 

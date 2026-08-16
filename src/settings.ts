@@ -1,4 +1,5 @@
 import { App, ButtonComponent, Notice, PluginSettingTab, Setting } from "obsidian";
+import type { SettingDefinitionItem, SettingGroupItem } from "obsidian";
 import type BetterLinkDisplayPlugin from "../main";
 import { detectLanguage, Language, LANGUAGES, setLanguage, t } from "./i18n";
 import { API_BASE } from "./api";
@@ -76,74 +77,119 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 		void this.plugin.saveSettings();
 	}
 
-	display(): void {
-		const { containerEl } = this;
-		containerEl.empty();
+	/**
+	 * The declarative form: Obsidian builds each row from `name`/`desc` and hands
+	 * the `render` callback an empty `Setting` to hang controls on. Going through
+	 * definitions rather than `display()` is what puts these settings into the
+	 * settings search index — the names and descriptions are readable without
+	 * rendering the tab.
+	 *
+	 * Every row is `render`-type rather than `control`-type: a `control` is read
+	 * and written through `getControlValue`/`setControlValue` keyed by string,
+	 * which none of these want — the toggles have to call `applyAppearance()` on
+	 * the way past, and the token field debounces its own writes.
+	 */
+	getSettingDefinitions(): SettingDefinitionItem[] {
+		return [
+			{
+				type: "group",
+				heading: t("general.heading"),
+				items: [this.languageSetting()],
+			},
+			{
+				type: "group",
+				heading: t("appearance.heading"),
+				items: [
+					this.previewSetting(),
+					this.appearanceToggle(
+						"appearance.background.name",
+						"appearance.background.desc",
+						"linkBackground"
+					),
+					this.appearanceToggle(
+						"appearance.border.name",
+						"appearance.border.desc",
+						"linkBorder"
+					),
+				],
+			},
+			{
+				type: "group",
+				heading: t("service.heading"),
+				items: [this.tokenSetting()],
+			},
+		];
+	}
 
-		new Setting(containerEl).setName(t("general.heading")).setHeading();
-
-		new Setting(containerEl)
-			.setName(t("general.language.name"))
-			.addDropdown((dropdown) => {
-				for (const language of LANGUAGES) dropdown.addOption(language, t(`language.${language}`));
-				dropdown.setValue(this.plugin.settings.language).onChange((value) => {
-					const language = value as Language;
-					this.plugin.settings.language = language;
-					setLanguage(language);
-					void this.plugin.saveSettings();
-					// Every label on this page is now in the wrong language.
-					this.display();
-				});
-			});
-
-		new Setting(containerEl).setName(t("appearance.heading")).setHeading();
-
-		this.addPreview(containerEl);
-
-		new Setting(containerEl)
-			.setName(t("appearance.background.name"))
-			.setDesc(t("appearance.background.desc"))
-			.addToggle((toggle) => {
-				toggle.setValue(this.plugin.settings.linkBackground).onChange((value) => {
-					this.plugin.settings.linkBackground = value;
-					// Applied before the save so open notes restyle as the toggle moves.
-					this.plugin.applyAppearance();
-					void this.plugin.saveSettings();
-				});
-			});
-
-		new Setting(containerEl)
-			.setName(t("appearance.border.name"))
-			.setDesc(t("appearance.border.desc"))
-			.addToggle((toggle) => {
-				toggle.setValue(this.plugin.settings.linkBorder).onChange((value) => {
-					this.plugin.settings.linkBorder = value;
-					this.plugin.applyAppearance();
-					void this.plugin.saveSettings();
-				});
-			});
-
-		new Setting(containerEl).setName(t("service.heading")).setHeading();
-
-		const token = new Setting(containerEl)
-			.setName(t("token.name"))
-			.setDesc(t("token.desc"))
-			.addText((text) => {
-				text.inputEl.type = "password";
-				text.inputEl.addClass("better-link-display-wide-input");
-				text.setPlaceholder(t("token.placeholder"))
-					.setValue(this.plugin.settings.accessToken)
-					.onChange((value) => {
-						this.plugin.settings.accessToken = value.trim();
-						this.queueSave();
+	private languageSetting(): SettingGroupItem {
+		return {
+			name: t("general.language.name"),
+			render: (setting) => {
+				setting.addDropdown((dropdown) => {
+					for (const language of LANGUAGES)
+						dropdown.addOption(language, t(`language.${language}`));
+					dropdown.setValue(this.plugin.settings.language).onChange((value) => {
+						const language = value as Language;
+						this.plugin.settings.language = language;
+						setLanguage(language);
+						void this.plugin.saveSettings();
+						// Every label on this page is now in the wrong language, and
+						// each `name`/`desc` was translated once when the definitions
+						// were built — only rebuilding them picks up the new language.
+						// (`refreshDomState()` re-runs the predicates, not the strings.)
+						this.update();
 					});
-			})
-			.addButton((button) => {
-				button.setButtonText(t("token.test")).onClick(() => void this.testToken(button));
-			});
-		// A token is far longer than the space left beside its description, so the
-		// field drops onto its own full-width row underneath.
-		token.settingEl.addClass("better-link-display-stacked-setting");
+				});
+			},
+		};
+	}
+
+	/** The two appearance options differ only in which flag they carry. */
+	private appearanceToggle(
+		nameKey: "appearance.background.name" | "appearance.border.name",
+		descKey: "appearance.background.desc" | "appearance.border.desc",
+		field: "linkBackground" | "linkBorder"
+	): SettingGroupItem {
+		return {
+			name: t(nameKey),
+			desc: t(descKey),
+			render: (setting) => {
+				setting.addToggle((toggle) => {
+					toggle.setValue(this.plugin.settings[field]).onChange((value) => {
+						this.plugin.settings[field] = value;
+						// Applied before the save so open notes restyle as the toggle moves.
+						this.plugin.applyAppearance();
+						void this.plugin.saveSettings();
+					});
+				});
+			},
+		};
+	}
+
+	private tokenSetting(): SettingGroupItem {
+		return {
+			name: t("token.name"),
+			desc: t("token.desc"),
+			render: (setting) => {
+				setting
+					.addText((text) => {
+						text.inputEl.type = "password";
+						text.inputEl.addClass("better-link-display-wide-input");
+						text.setPlaceholder(t("token.placeholder"))
+							.setValue(this.plugin.settings.accessToken)
+							.onChange((value) => {
+								this.plugin.settings.accessToken = value.trim();
+								this.queueSave();
+							});
+					})
+					.addButton((button) => {
+						button.setButtonText(t("token.test")).onClick(() => void this.testToken(button));
+					});
+				// A token is far longer than the space left beside its description, so
+				// the field drops onto its own full-width row underneath.
+				setting.settingEl.addClass("better-link-display-stacked-setting");
+			},
+		};
 	}
 
 	/**
@@ -157,10 +203,17 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 	 * notes. That is also why it needs no updating when a toggle changes: nothing
 	 * about the preview is computed here.
 	 */
-	private addPreview(containerEl: HTMLElement): void {
-		const setting = new Setting(containerEl)
-			.setName(t("appearance.preview.name"))
-			.setDesc(t("appearance.preview.desc"));
+	private previewSetting(): SettingGroupItem {
+		return {
+			name: t("appearance.preview.name"),
+			desc: t("appearance.preview.desc"),
+			// A picture of a bookmark carries no words of its own, so there is
+			// nothing here for the settings search to match beyond the two above.
+			render: (setting) => this.renderPreview(setting),
+		};
+	}
+
+	private renderPreview(setting: Setting): void {
 		// The sample is a line of note text, so it wants the full width rather than
 		// the strip left beside a description.
 		setting.settingEl.addClass("better-link-display-stacked-setting");
@@ -192,10 +245,7 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 			return;
 		}
 
-		// `ButtonComponent.setDisabled` only exists from Obsidian 1.2.3, and the
-		// manifest promises 1.0.0 — the underlying property is the same thing and
-		// costs nothing in reach.
-		button.buttonEl.disabled = true;
+		button.setDisabled(true);
 		button.setButtonText(t("token.testing"));
 
 		let outcome: VerifyOutcome;
@@ -207,7 +257,7 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 
 		// The tab may have been re-rendered or closed while the request ran.
 		if (!button.buttonEl.isConnected) return;
-		button.buttonEl.disabled = false;
+		button.setDisabled(false);
 
 		// The button can only say that something went wrong; which of the failures
 		// it was needs a sentence, so those keep their notice.
