@@ -17,6 +17,9 @@ const en = {
 	"language.zh": "中文",
 
 	"appearance.heading": "Appearance",
+	"appearance.preview.name": "Preview",
+	"appearance.preview.desc": "How a formatted link looks in a note with the options below.",
+	"appearance.preview.sample": "Example Site",
 	"appearance.background.name": "Background",
 	"appearance.background.desc":
 		"Give formatted links a light grey rounded background in notes.",
@@ -67,6 +70,9 @@ const zh: Record<TranslationKey, string> = {
 	"language.zh": "中文",
 
 	"appearance.heading": "外观",
+	"appearance.preview.name": "预览",
+	"appearance.preview.desc": "按下面的选项，格式化后的链接在笔记中的样子。",
+	"appearance.preview.sample": "示例网站",
 	"appearance.background.name": "背景",
 	"appearance.background.desc": "为笔记中格式化后的链接添加浅灰色圆角背景。",
 	"appearance.border.name": "边框",

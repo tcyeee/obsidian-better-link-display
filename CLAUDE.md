@@ -12,7 +12,7 @@ npx tsx --test src/urlScan.test.ts   # one test file
 npx tsx --test --test-name-pattern "bare external URL" "src/**/*.test.ts"
 ```
 
-Only the pure-string modules (`src/urlScan.ts`, `src/verbatim.ts`) have tests — they import nothing from `obsidian`, which is what makes them runnable outside the app. Keep new text/parsing logic there rather than inline in the editor extension so it stays testable.
+Only the pure-string modules (`src/urlScan.ts`, `src/verbatim.ts`, `src/bookmarkScan.ts`) have tests — they import nothing from `obsidian`, which is what makes them runnable outside the app. Keep new text/parsing logic there rather than inline in the editor extension so it stays testable.
 
 To try a build inside a vault, the `/obsidian-dev` skill builds and copies `main.js` + `manifest.json` + `styles.css` into a local vault.
 
@@ -24,10 +24,14 @@ An Obsidian plugin that rewrites an external link in a note into a Markdown book
 
 **The central invariant: nothing plugin-specific is ever written into the user's note.** The output of `bookmarkMarkdown()` is ordinary Markdown — `[![](data:image/png;base64,…) Title](url)` — so notes keep rendering with the plugin disabled, uninstalled, or in another app. Two consequences ripple through the codebase:
 
-- Nothing in the note tells `styles.css` which links are formatted, and `:has()` — the obvious way to select a link *containing* the inlined icon — is rejected by plugin review. `src/bookmarkMarks.ts` bridges that gap and is the only thing the stylesheet matches on. It works **three** ways, because the two views render the same Markdown differently and CodeMirror does not allow all of them:
+- Nothing in the note tells `styles.css` which links are formatted, and `:has()` — the obvious way to select a link *containing* the inlined icon — is rejected by plugin review. `src/bookmarkMarks.ts` bridges that gap and is the only thing the stylesheet matches on. It works **four** ways, because the two views render the same Markdown differently and CodeMirror does not allow all of them:
   - Reading view nests the icon inside `a.external-link` → a Markdown post-processor adds `better-link-display-bookmark` to the anchor.
   - Live Preview renders the icon as an `.image-embed` next to a `.cm-link` inside one `.cm-line`. The embed is inside an Obsidian widget, which CodeMirror's mutation observer ignores, so `better-link-display-embed` is added to it in the DOM — from `requestMeasure`, since a `ViewPlugin`'s `update` runs *before* CodeMirror syncs its DOM.
   - The `.cm-line` itself belongs to CodeMirror, which wipes a foreign class off it on the next sync, so `better-link-display-line` is a `Decoration.line` computed from the document text (`](data:image/`), skipping lines that intersect the selection because Live Preview shows those as raw Markdown.
+  - Live Preview has no single element holding one bookmark — the icon and the title are separate elements — so anything drawn *around* a whole bookmark (the background and border options) needs one of its own: `better-link-display-plate` is a `Decoration.mark` over the source range `src/bookmarkScan.ts` finds. Three details are load-bearing, and all three were wrong at some point before being checked against a real render:
+    - The mark is `inclusive`, or it would not cover the icon widget, which starts where it does.
+    - It is provided through `EditorView.outerDecorations`, **not** the ordinary `decorations` facet at any precedence. CodeMirror nests overlapping marks innermost-first by decoration-set order, and Obsidian's live-preview decorations are registered after a plugin's at the same precedence — so even `Prec.lowest` loses, and the plate ends up inside `.cm-link`, cut into one span per run of text. `updateDeco()` appends `outerDecorations` after every `decorations` value, so it wraps by construction. It is feature-detected (@codemirror/view 6.29+); without it no plate is drawn at all, which is better than a split one.
+    - `styles.css` gives the embed `display: inline-block`. Obsidian renders it as a `div`, and a block-level box inside the inline plate splits the plate and drops the icon onto its own line.
 
   A styling change to one view almost always needs the mirrored rule for the other, and a new rule needs its mark added to that module rather than a `:has()`.
 - There is no "unformat" action, and no state to migrate.

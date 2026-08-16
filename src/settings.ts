@@ -3,6 +3,7 @@ import type BetterLinkDisplayPlugin from "../main";
 import { detectLanguage, Language, LANGUAGES, setLanguage, t } from "./i18n";
 import { API_BASE } from "./api";
 import { LOOKUP_TIMEOUT_MS, SiteLookup, VerifyOutcome } from "./lookup";
+import { PREVIEW_ICON } from "./previewIcon";
 
 export interface BetterLinkDisplaySettings {
 	accessToken: string;
@@ -97,6 +98,8 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 
 		new Setting(containerEl).setName(t("appearance.heading")).setHeading();
 
+		this.addPreview(containerEl);
+
 		new Setting(containerEl)
 			.setName(t("appearance.background.name"))
 			.setDesc(t("appearance.background.desc"))
@@ -141,6 +144,34 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 		// A token is far longer than the space left beside its description, so the
 		// field drops onto its own full-width row underneath.
 		token.settingEl.addClass("better-link-display-stacked-setting");
+	}
+
+	/**
+	 * A standing example of what the options below do, so the user does not have to
+	 * leave settings and find a formatted link to see the effect of a toggle.
+	 *
+	 * It is built from the same markup Reading view produces for a bookmark — an
+	 * anchor carrying the bookmark mark, wrapping an inlined `data:` icon — so
+	 * every rule in `styles.css` reaches it exactly as it reaches a real one, and
+	 * the appearance classes on `body` restyle it on the same repaint as the open
+	 * notes. That is also why it needs no updating when a toggle changes: nothing
+	 * about the preview is computed here.
+	 */
+	private addPreview(containerEl: HTMLElement): void {
+		const setting = new Setting(containerEl)
+			.setName(t("appearance.preview.name"))
+			.setDesc(t("appearance.preview.desc"));
+		// The sample is a line of note text, so it wants the full width rather than
+		// the strip left beside a description.
+		setting.settingEl.addClass("better-link-display-stacked-setting");
+
+		const surface = setting.controlEl.createDiv({ cls: "better-link-display-preview" });
+		const link = surface.createEl("a", { cls: "external-link better-link-display-bookmark" });
+		// No `href`: this is a picture of a link, and clicking it should not open
+		// anything. The alt text is empty because the title beside it already says
+		// what the bookmark is.
+		link.createEl("img", { attr: { src: PREVIEW_ICON, alt: "" } });
+		link.appendText(t("appearance.preview.sample"));
 	}
 
 	/**
