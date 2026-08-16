@@ -44,7 +44,7 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 	onunload() {
 		// Guarded because onload may have failed before this was constructed.
 		this.editorFeature?.destroy();
-		document.body.removeClass(BACKGROUND_CLASS, BORDER_CLASS);
+		activeDocument.body.removeClass(BACKGROUND_CLASS, BORDER_CLASS);
 	}
 
 	/**
@@ -53,8 +53,8 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 	 * with nothing to re-render and nothing written into the note.
 	 */
 	applyAppearance(): void {
-		document.body.toggleClass(BACKGROUND_CLASS, this.settings.linkBackground);
-		document.body.toggleClass(BORDER_CLASS, this.settings.linkBorder);
+		activeDocument.body.toggleClass(BACKGROUND_CLASS, this.settings.linkBackground);
+		activeDocument.body.toggleClass(BORDER_CLASS, this.settings.linkBorder);
 	}
 
 	async loadSettings() {
