@@ -1,9 +1,10 @@
-import { Editor, Notice } from "obsidian";
+import { Editor, Notice, setIcon } from "obsidian";
 import { Extension, StateEffect, StateField } from "@codemirror/state";
 import {
 	Decoration,
 	DecorationSet,
 	EditorView,
+	Rect,
 	closeHoverTooltips,
 	hoverTooltip,
 } from "@codemirror/view";
@@ -172,16 +173,28 @@ export class BetterLinkDisplayEditorFeature {
 				return {
 					// `pos`..`end` spans the whole URL so the tooltip survives the
 					// pointer travelling along it, while `getCoords` overrides where
-					// it is drawn: anchored to the link's right edge, above the line.
+					// it is drawn: centred on the link, above the line.
 					pos: from,
 					end: to,
 					above: true,
-					create: () => ({
-						dom: this.tooltipDom(view, from, to, source, hit.url),
-						getCoords: (fallback: number) =>
-							view.coordsAtPos(to, -1) ??
-							view.coordsAtPos(fallback) ?? { top: 0, bottom: 0, left: 0, right: 0 },
-					}),
+					create: () => {
+						const dom = this.tooltipDom(view, from, to, source, hit.url);
+						return {
+							dom,
+							// A gap the pointer can't fall into, but wide enough that
+							// the button reads as floating over the link rather than
+							// sitting on the line above it.
+							offset: { x: 0, y: 4 },
+							getCoords: (fallback: number) => centreOnLink(view, dom, from, to, fallback),
+							// CodeMirror draws every hover tooltip inside one host
+							// element and offers no way to put a class on it, so the
+							// bubble Obsidian paints there is marked from here once
+							// the host exists — the button is meant to be the whole
+							// visual, not a chip inside a second box.
+							mount: () =>
+								dom.parentElement?.classList.add("better-link-display-tooltip-host"),
+						};
+					},
 				};
 			},
 			{ hoverTime: HOVER_DELAY_MS, hideOnChange: true }
@@ -196,10 +209,12 @@ export class BetterLinkDisplayEditorFeature {
 		url: string
 	): HTMLElement {
 		const container = createDiv({ cls: "better-link-display-tooltip" });
-		const button = container.createEl("button", {
-			cls: "better-link-display-format-button",
-			text: t("button.format"),
-		});
+		const button = container.createEl("button", { cls: "better-link-display-format-button" });
+		// The icon is decorative: it names the action at a glance, and an
+		// Obsidian build without this glyph simply renders nothing beside the
+		// label rather than an empty box.
+		setIcon(button, "bookmark");
+		button.createSpan({ text: t("button.format") });
 		// The editor would otherwise move the caret before the click lands.
 		button.addEventListener("mousedown", (event) => event.preventDefault());
 		button.addEventListener("click", (event) => {
@@ -286,6 +301,38 @@ export class BetterLinkDisplayEditorFeature {
 				return t("failure.timeout", { seconds: LOOKUP_TIMEOUT_MS / 1000 });
 		}
 	}
+}
+
+/**
+ * Where the hover button is drawn: horizontally centred on the link, on the
+ * line the link ends on.
+ *
+ * CodeMirror lines the tooltip's left edge up with the `left` of whatever this
+ * returns, so centring means handing back the button's own box moved onto the
+ * link's midpoint — hence the measurement of `dom`, which is cheap and in-phase
+ * here (CodeMirror calls `getCoords` from the read half of a measure cycle,
+ * beside its own `getBoundingClientRect` calls).
+ *
+ * A link long enough to wrap has no single midpoint, and the coordinates of its
+ * start belong to a different line than its end, so those are centred on the
+ * end alone rather than on a span across two lines.
+ */
+function centreOnLink(
+	view: EditorView,
+	dom: HTMLElement,
+	from: number,
+	to: number,
+	fallback: number
+): Rect {
+	const end = view.coordsAtPos(to, -1) ?? view.coordsAtPos(fallback);
+	if (!end) return { top: 0, bottom: 0, left: 0, right: 0 };
+
+	const start = view.coordsAtPos(from, 1);
+	const sameLine = start && Math.abs(start.top - end.top) < 1;
+	const centre = ((sameLine ? start.left : end.left) + end.right) / 2;
+	const half = dom.getBoundingClientRect().width / 2;
+
+	return { top: end.top, bottom: end.bottom, left: centre - half, right: centre + half };
 }
 
 /**
