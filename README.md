@@ -2,11 +2,68 @@
 
 [中文](README.zh.md)
 
-An Obsidian plugin that turns an external link in your notes into a proper bookmark — the site's title and favicon — with one click.
+Turn a plain web link in your Obsidian note into a proper bookmark — the site's real title and its little icon — with one click.
 
-## What it does
+**Before**
 
-Hover an external link while editing a note and a **Format** button appears above it. Bare URLs, Markdown links, and autolinks are supported:
+```
+https://example.com
+```
+
+**After**
+
+> 🌐 Example Domain
+
+The bookmark is still just a normal link: click it and it opens the page.
+
+---
+
+## Contents
+
+- [Installation](#installation)
+- [First-time setup](#first-time-setup)
+- [How to use it](#how-to-use-it)
+- [Settings](#settings)
+- [If something goes wrong](#if-something-goes-wrong)
+- [Good to know](#good-to-know)
+- [For developers](#for-developers)
+
+---
+
+## Installation
+
+**From Obsidian (recommended)**
+
+1. Open **Settings → Community plugins** and make sure *Restricted mode* is off.
+2. Click **Browse**, search for **Better Link Display**, and click **Install**.
+3. Click **Enable**.
+
+**Manually**
+
+1. Download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/tcyeee/obsidian-better-link-display/releases).
+2. Put all three into `<your vault>/.obsidian/plugins/better-link-display/` (create the folder if it isn't there).
+3. Restart Obsidian, then enable the plugin under **Settings → Community plugins**.
+
+Works on Obsidian 1.0 and later, on desktop and mobile.
+
+## First-time setup
+
+The plugin can't read a web page's title on its own — it asks a small online service, [Bookmarkify](https://bookmarkify.cc), to do that. The service needs to know it's you asking, so you need a free **access token** once.
+
+1. Go to [bookmarkify.cc](https://bookmarkify.cc), sign in, and open the token management page.
+2. Create a token and copy it.
+3. In Obsidian, open **Settings → Better Link Display**, paste the token into the **Access token** box.
+4. Click **Test**. If it says *Success*, you're done.
+
+The token is **read-only**. It can only be used to look up the title and icon of a web address — it cannot see or change your bookmarks or your account.
+
+## How to use it
+
+### With the mouse
+
+Open a note **in editing mode**, hover over a web link, and a small **Format** button appears just above it.
+
+Links can be written in any of these three ways:
 
 ```
 https://example.com
@@ -14,68 +71,88 @@ https://example.com
 <https://example.com>
 ```
 
-Click it and the link enters a loading state — a gently pulsing highlight — for up to ten seconds while Better Link Display looks the page up. On success the URL is rewritten in place as a markdown link with the site's favicon embedded directly in it:
+Click **Format**. The link glows softly while the plugin looks the page up — usually a second or two — and then the link turns into a bookmark with the site's name and icon.
 
-```
-[![](data:image/png;base64,iVBORw0…) Example Domain](https://example.com)
-```
+If the lookup fails, the link flashes red, a message tells you why, and **your note is left exactly as it was**.
 
-If the lookup fails or takes longer than ten seconds, the link flashes red, a notice explains what went wrong, and the note is left untouched.
+### With the keyboard (and on phones)
 
-Hover a link that already carries an icon and the button reads **Reformat** — a fresh lookup that replaces the title and icon — with a **Reset** button beside it. Reset takes the icon back out and leaves the plain Markdown link behind:
+Put your cursor anywhere inside a link and run the command **Format link under cursor** from the command palette (`Cmd/Ctrl + P`). This does the same thing without a mouse — and it's how you use the plugin on a phone or tablet, where there is no hovering.
 
-```
-[Example Domain](https://example.com)
-```
+You can also give the command a hotkey under **Settings → Hotkeys**.
 
-It is a local edit, made from the text already in the note: no request, nothing to wait for, and the address is left exactly as written.
+### Changing your mind
 
-The same action is available from the command palette as **Format link under cursor**, which works without a pointer and is the way to use the plugin on mobile.
+Hover over a link that's already been formatted and you get two buttons:
 
-The icon lives in the note, not in a cache: the bookmark keeps rendering when the note is copied into another vault, another app, or a plain markdown file, with no plugin and no network involved. What gets written is ordinary Markdown — nothing plugin-specific is stored alongside it, so disabling or uninstalling the plugin leaves every formatted link intact.
+- **Reformat** — look the page up again and refresh the title and icon (handy if the site has since changed its name).
+- **Reset** — take the icon back out, leaving a plain link with the title as its text:
 
-Icons are re-encoded to 48×48 — three source pixels per CSS pixel, so they stay sharp on high-density displays while rendering at text height. That costs between about 1,300 and 4,800 characters of base64 per icon, measured across a handful of real favicons.
+  ```
+  [Example Domain](https://example.com)
+  ```
 
-Nothing happens without a click — opening a note never issues a single request.
+  Reset is instant and works offline — it just tidies up the text that's already in your note.
 
-## Requirements
+  One thing to expect: Reset goes back to *title + address*, not to whatever you originally typed. If you started with a bare `https://example.com`, that original text was already replaced by the site's title when you formatted it, and there's no way to bring it back.
 
-- Obsidian 1.0 or later. On mobile, use the command rather than the hover button.
-- A connection to the hosted Bookmarkify service at `https://bookmarkify.cc/api`, which resolves page titles and icons.
-- An **access token** generated from that service, used to authenticate requests.
+## Settings
 
-See [api.md](api.md) for the API contract (`GET /extension/site-info?url=...`, `X-Extension-Token` header).
+Open **Settings → Better Link Display**.
 
-The service hands back favicons as short-lived signed CDN links, so the plugin downloads the image once at format time and stores it inline. That is the only request it ever makes to a host other than the service itself.
+| Setting | What it does |
+| --- | --- |
+| **Language** | Switches the plugin's own settings and messages between English and 中文. Follows your Obsidian language by default. |
+| **Preview** | A live sample bookmark so you can see the two options below before applying them. |
+| **Background** | Gives formatted links a soft grey rounded background, like a little card. Off by default. |
+| **Border** | Draws a light grey outline around formatted links. Off by default. |
+| **Access token** | Your key to the lookup service. The **Test** button checks it right away. |
 
-## Setup
+Background and Border are just looks — they change nothing in your notes, so you can turn them on and off freely, and they apply to every formatted link at once.
 
-1. Install and enable the plugin in Obsidian.
-2. Generate an access token from the Bookmarkify web service's token management page.
-3. Open **Settings → Better Link Display** and paste the token into the **Access token** field, then press **Test** to confirm the service accepts it.
-4. Open a note in editing mode, hover an external link, and click **Format** — or put the caret on a link and run **Format link under cursor**.
+> One small quirk: the *name* of the **Format link under cursor** command only changes language after you restart Obsidian. Everything else switches immediately.
 
-Under **General**, the **Language** setting switches the plugin's own settings and messages between English and 中文; it defaults to your Obsidian interface language. The command name follows after Obsidian is restarted.
+## If something goes wrong
 
-The access token is read-only: it can only be used to look up page titles/favicons for arbitrary URLs, and cannot read or modify your bookmarks or account data.
+Every message the plugin shows starts with "Better Link Display:". Here's what each one means:
 
-## Limitations
+| The message says | What to do |
+| --- | --- |
+| *Set the access token in settings first* | You haven't pasted a token yet — see [First-time setup](#first-time-setup). |
+| *The access token is invalid or has been revoked* | Generate a fresh token on the service's website and paste it in again. |
+| *No response from … Check your network connection* | You're offline, or the service is temporarily unreachable. Try again in a moment. |
+| *… answered with an error* | The service itself is having trouble. Try again later. |
+| *The service could not read this page's title* | That particular site is blocking automated readers. Nothing to fix — write the link's text yourself. |
+| *No answer within 10 seconds* | The lookup took too long. Your note was not changed; just click **Format** again. |
 
-- Formatting only works in editing mode (Live Preview or Source mode). Code blocks, frontmatter, and external image embeds are ignored.
-- The embedded base64 makes the line long in Source mode. That is the price of a note that renders anywhere; Live Preview and Reading view show only the icon and title.
-- A bare URL containing a bracket — `https://en.wikipedia.org/wiki/Foo_(bar)` — is not offered a button, because Markdown cannot tell where such a URL ends. Wrap it in `<…>` or write it as `[text](…)` and it becomes formattable.
-- Only `https:` icons are downloaded, and only if they decode as an image, so a misconfigured endpoint can't turn a note into a tracking pixel.
-- **Reset** goes back to `[Title](url)`, not to whatever the line was before it was ever formatted. A bare URL formatted once has already been replaced by the site's title, and going all the way back would have to guess.
+**No Format button appears?** Check that you're in editing mode (Live Preview or Source mode) — the button doesn't exist in Reading view. Links inside code blocks and in a note's frontmatter are deliberately ignored, and so are image embeds like `![alt](…)`.
 
-## Development
+**A link with brackets in it won't format.** An address like `https://en.wikipedia.org/wiki/Foo_(bar)` gets no button, because Markdown itself can't tell where such an address ends. Wrap it in angle brackets — `<https://en.wikipedia.org/wiki/Foo_(bar)>` — or write it as `[text](address)` and it becomes formattable.
+
+## Good to know
+
+**Your notes stay yours.** What the plugin writes is ordinary Markdown, with the icon stored as text inside the link itself. Nothing plugin-specific is added. That means your formatted bookmarks keep working when you:
+
+- disable or uninstall the plugin,
+- copy the note into another vault, into a different app, or into a plain `.md` file,
+- open the note with no internet connection.
+
+**The trade-off:** because the icon is stored as text, that line looks very long in Source mode — a wall of random characters. In Live Preview and Reading view you only ever see the tidy icon and title. Each icon adds roughly 1,300–4,800 characters to the file. Icons are stored at 48×48 so they stay sharp on high-resolution screens while displaying at the height of your text.
+
+**Nothing happens behind your back.** The plugin never contacts anything unless you click **Format** or run the command. Opening a note sends no requests. Formatting sends exactly two: one to the lookup service for the title and icon address, and one to download that icon. Only secure (`https`) icons are downloaded, and only if they really are images.
+
+## For developers
+
+The service contract is documented in [api.md](api.md).
 
 ```bash
 npm install
-npm run dev      # watch build with esbuild
+npm run dev      # watch build
 npm run build    # type-check + production build
+npm test         # unit tests
 ```
 
-The build outputs `main.js`, which along with `manifest.json` and `styles.css` is loaded by Obsidian as the plugin.
+The build produces `main.js`, which together with `manifest.json` and `styles.css` is what Obsidian loads.
 
 ## License
 
