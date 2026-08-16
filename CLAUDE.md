@@ -41,7 +41,7 @@ An Obsidian plugin that rewrites an external link in a note into a Markdown book
 1. `verbatim.inVerbatimBlock()` rejects fenced code blocks and frontmatter (cached per immutable `Text` doc version).
 2. `urlScan.findExternalLinkAt()` — pure string work on a single line — returns the source range to replace for a Markdown link, autolink, or bare URL. It deliberately refuses truncated bare URLs (a bracket right after the match) and `![alt](url)` embeds.
 3. `SiteLookup` (`src/lookup.ts`) serialises every request through one promise chain with ≥350 ms spacing and a 10 s timeout, shared with the settings **Test** button so the two can't race past the service's rate limit.
-4. `api.fetchSiteInfo()` calls `GET {API_BASE}/extension/site-info` with an `X-Extension-Token` header and maps outcomes onto the distinct failure reasons (`auth` / `unresolved` / `unreachable` / `server`), which stay separate all the way to the user-facing notice because each implies a different fix. See `api.md` for the contract.
+4. `api.fetchSiteInfo()` calls `GET {API_BASE}/extension/site-info` with an `X-Extension-Token` header and maps outcomes onto the distinct failure reasons (`auth` / `unresolved` / `unreachable` / `server`), which stay separate all the way to the user-facing notice because each implies a different fix. `src/api.ts` is the only description of the service contract.
 5. `favicon.toInlineIcon()` downloads the short-lived signed CDN URL and re-encodes it through a canvas to a fixed 48×48 PNG (rendered at 16px by CSS). A missing icon degrades to a bookmark without one, never a failed lookup.
 6. The rewrite is dispatched as a CodeMirror transaction.
 
@@ -59,4 +59,4 @@ Security limits worth preserving when touching `favicon.ts` / `urlScan.ts`: only
 
 Tabs, and comments that explain *why* a constraint exists rather than what the line does — match that density. Obsidian's plugin review rules apply: no `!important`, 6-digit hex colours, no `:has()`, no inline style assignment or created `<style>` elements (styling goes through classes in `styles.css`), no `innerHTML`, and no API newer than the manifest's `minAppVersion`, which is 1.13.0 — raised from 1.0.0 so the settings tab could move to `getSettingDefinitions()`. The `/obsidian-plugin-lint` skill checks these.
 
-Both `README.md` and `README.zh.md` describe user-visible behaviour and are kept in sync; `api.md` documents the service contract.
+`README.md` is the only doc: the intro pairs each English line with its Chinese line, the rest is English, and there is no separate translation to keep in sync. It describes user-visible behaviour only; keep it short, and put screenshots in `public/`.
