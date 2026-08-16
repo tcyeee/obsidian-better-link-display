@@ -46,6 +46,8 @@ const en = {
 
 	"command.formatLink": "Format link under cursor",
 	"button.format": "Format",
+	"button.reformat": "Reformat",
+	"button.reset": "Reset",
 
 	"failure.unconfigured":
 		"Better Link Display: set the access token in Settings → Better Link Display first.",
@@ -97,6 +99,8 @@ const zh: Record<TranslationKey, string> = {
 
 	"command.formatLink": "格式化光标处的链接",
 	"button.format": "格式化",
+	"button.reformat": "重新格式化",
+	"button.reset": "重置",
 
 	"failure.unconfigured": "Better Link Display：请先在「设置 → Better Link Display」中填写访问令牌。",
 	"failure.auth": "Better Link Display：访问令牌无效或已被吊销，请重新生成并填入设置。",

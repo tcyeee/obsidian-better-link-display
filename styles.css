@@ -194,7 +194,8 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
 }
 
 /*
- * The "format" button, anchored above the right edge of the hovered link.
+ * The hover buttons, anchored above the right edge of the hovered link — one to
+ * format, plus a second to reset when the link is already a bookmark.
  *
  * It is meant to read as one small floating chip over the note. CodeMirror
  * puts every hover tooltip inside a shared host and paints it as a grey box of
@@ -233,6 +234,7 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
 
 .better-link-display-tooltip {
 	display: flex;
+	gap: 4px;
 	padding: 0;
 }
 

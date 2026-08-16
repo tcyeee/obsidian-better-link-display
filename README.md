@@ -22,6 +22,14 @@ Click it and the link enters a loading state — a gently pulsing highlight — 
 
 If the lookup fails or takes longer than ten seconds, the link flashes red, a notice explains what went wrong, and the note is left untouched.
 
+Hover a link that already carries an icon and the button reads **Reformat** — a fresh lookup that replaces the title and icon — with a **Reset** button beside it. Reset takes the icon back out and leaves the plain Markdown link behind:
+
+```
+[Example Domain](https://example.com)
+```
+
+It is a local edit, made from the text already in the note: no request, nothing to wait for, and the address is left exactly as written.
+
 The same action is available from the command palette as **Format link under cursor**, which works without a pointer and is the way to use the plugin on mobile.
 
 The icon lives in the note, not in a cache: the bookmark keeps rendering when the note is copied into another vault, another app, or a plain markdown file, with no plugin and no network involved. What gets written is ordinary Markdown — nothing plugin-specific is stored alongside it, so disabling or uninstalling the plugin leaves every formatted link intact.
@@ -57,7 +65,7 @@ The access token is read-only: it can only be used to look up page titles/favico
 - The embedded base64 makes the line long in Source mode. That is the price of a note that renders anywhere; Live Preview and Reading view show only the icon and title.
 - A bare URL containing a bracket — `https://en.wikipedia.org/wiki/Foo_(bar)` — is not offered a button, because Markdown cannot tell where such a URL ends. Wrap it in `<…>` or write it as `[text](…)` and it becomes formattable.
 - Only `https:` icons are downloaded, and only if they decode as an image, so a misconfigured endpoint can't turn a note into a tracking pixel.
-- There is no "unformat" action. The original bare URL is replaced by the site's title, so reverting would have to guess what the line looked like before.
+- **Reset** goes back to `[Title](url)`, not to whatever the line was before it was ever formatted. A bare URL formatted once has already been replaced by the site's title, and going all the way back would have to guess.
 
 ## Development
 

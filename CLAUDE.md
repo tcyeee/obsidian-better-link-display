@@ -34,7 +34,7 @@ An Obsidian plugin that rewrites an external link in a note into a Markdown book
     - `styles.css` gives the embed `display: inline-block`. Obsidian renders it as a `div`, and a block-level box inside the inline plate splits the plate and drops the icon onto its own line.
 
   A styling change to one view almost always needs the mirrored rule for the other, and a new rule needs its mark added to that module rather than a `:has()`.
-- There is no "unformat" action, and no state to migrate.
+- There is no state to migrate. The hover button's **Reset** is not an undo either: `bookmarkScan.withoutInlineIcon()` rebuilds `[Title](url)` from the source range alone — it refuses anything that is not exactly one whole bookmark — so it can only reach the plain link, never whatever the line held before the first format.
 
 **Flow of one format** (hover button or the `format-link-under-cursor` command, both entering `BetterLinkDisplayEditorFeature`):
 

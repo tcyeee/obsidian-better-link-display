@@ -10,6 +10,7 @@ import {
 } from "@codemirror/view";
 import { LOOKUP_TIMEOUT_MS, LookupFailure, LookupOutcome, SiteLookup } from "./lookup";
 import { findExternalLinkAt, toLinkDestination, toLinkText } from "./urlScan";
+import { withoutInlineIcon } from "./bookmarkScan";
 import { inVerbatimBlock } from "./verbatim";
 import { t } from "./i18n";
 import { API_BASE } from "./api";
@@ -209,21 +210,67 @@ export class BetterLinkDisplayEditorFeature {
 		url: string
 	): HTMLElement {
 		const container = createDiv({ cls: "better-link-display-tooltip" });
+		// A link that already carries an inlined icon is a bookmark this plugin
+		// (or an equivalent hand edit) produced. Formatting it again is a
+		// refresh, not a first format, and it is the only case where there is
+		// something to undo — hence the second button, offered only here.
+		const plain = withoutInlineIcon(source);
+
+		this.tooltipButton(
+			container,
+			view,
+			"bookmark",
+			plain === null ? t("button.format") : t("button.reformat"),
+			() => void this.format(view, from, to, source, url)
+		);
+
+		if (plain !== null) {
+			this.tooltipButton(container, view, "rotate-ccw", t("button.reset"), () =>
+				this.reset(view, from, to, source, plain)
+			);
+		}
+		return container;
+	}
+
+	private tooltipButton(
+		container: HTMLElement,
+		view: EditorView,
+		icon: string,
+		label: string,
+		run: () => void
+	): void {
 		const button = container.createEl("button", { cls: "better-link-display-format-button" });
 		// The icon is decorative: it names the action at a glance, and an
 		// Obsidian build without this glyph simply renders nothing beside the
 		// label rather than an empty box.
-		setIcon(button, "bookmark");
-		button.createSpan({ text: t("button.format") });
+		setIcon(button, icon);
+		button.createSpan({ text: label });
 		// The editor would otherwise move the caret before the click lands.
 		button.addEventListener("mousedown", (event) => event.preventDefault());
 		button.addEventListener("click", (event) => {
 			event.preventDefault();
 			event.stopPropagation();
 			view.dispatch({ effects: closeHoverTooltips });
-			void this.format(view, from, to, source, url);
+			run();
 		});
-		return container;
+	}
+
+	/**
+	 * Drop a bookmark back to `[Title](url)`. No lookup and no loading state:
+	 * the replacement is derived from the text already in the note, so it is one
+	 * synchronous edit — which also means the only safety check it needs is the
+	 * same one `format()` opens with.
+	 */
+	private reset(
+		view: EditorView,
+		from: number,
+		to: number,
+		source: string,
+		plain: string
+	): void {
+		if (view.state.sliceDoc(from, to) !== source) return;
+		if (hasMarkOverlapping(view, from, to)) return;
+		view.dispatch({ changes: { from, to, insert: plain } });
 	}
 
 	private async format(
