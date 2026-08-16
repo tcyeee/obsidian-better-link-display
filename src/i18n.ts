@@ -27,9 +27,17 @@ const en = {
 	"appearance.border.desc": "Give formatted links a light grey border in notes.",
 
 	"service.heading": "Lookup service",
+	"token.setup.name": "Access token required",
+	"token.setup.desc":
+		"Links cannot be formatted until an access token is set below. Follow the two steps to get one.",
 	"token.name": "Access token",
 	"token.desc":
-		"Read-only token used to query page titles and icons. Generate one on the service's token management page and paste it here. It cannot read or modify your bookmarks or account data.",
+		"Read-only token used to query page titles and icons. It cannot read or modify your bookmarks or account data.",
+	"token.steps.heading": "How to get one:",
+	// `{site}` is left as-is by `t()` and replaced with a link by the settings
+	// tab, so the address is clickable rather than something to retype.
+	"token.steps.login": "Log in to {site}.",
+	"token.steps.generate": "Open Settings → AccessToken and click Generate Token, then paste it here.",
 	"token.placeholder": "Paste your access token",
 	"token.test": "Test",
 	"token.testing": "Testing…",
@@ -81,9 +89,13 @@ const zh: Record<TranslationKey, string> = {
 	"appearance.border.desc": "为笔记中格式化后的链接添加浅灰色边框。",
 
 	"service.heading": "解析服务",
+	"token.setup.name": "需要先设置访问令牌",
+	"token.setup.desc": "在下面填写访问令牌之前，无法格式化链接。按两步说明获取一个。",
 	"token.name": "访问令牌",
-	"token.desc":
-		"用于查询页面标题和图标的只读令牌。在服务的令牌管理页生成后粘贴到这里。它无法读取或修改你的书签与账号数据。",
+	"token.desc": "用于查询页面标题和图标的只读令牌。它无法读取或修改你的书签与账号数据。",
+	"token.steps.heading": "获取方式：",
+	"token.steps.login": "登录 {site}。",
+	"token.steps.generate": "在「Setting → AccessToken」中点击生成 Token，然后粘贴到这里。",
 	"token.placeholder": "粘贴你的访问令牌",
 	"token.test": "测试",
 	"token.testing": "测试中…",

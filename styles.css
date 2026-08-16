@@ -13,6 +13,43 @@
 }
 
 /*
+ * The banner shown above the token field until a token is set. It is an
+ * ordinary settings row, so it is tinted and given a warning-coloured edge to
+ * read as a notice rather than as one more option — an unconfigured plugin
+ * cannot format anything, and this is the only place that says so before the
+ * user tries.
+ */
+.better-link-display-setup-notice {
+	border-inline-start: 3px solid var(--text-warning);
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
+	padding-inline: var(--size-4-3);
+}
+
+.better-link-display-setup-notice .setting-item-name {
+	color: var(--text-warning);
+}
+
+/* Sized down to the label it sits beside, and tinted with it. */
+.better-link-display-setup-icon {
+	display: inline-flex;
+	vertical-align: text-bottom;
+	margin-inline-end: var(--size-4-1);
+}
+
+.better-link-display-setup-icon .svg-icon {
+	width: 16px;
+	height: 16px;
+	color: inherit;
+}
+
+/* The two steps that produce a token, under the token field's description. */
+.better-link-display-token-steps {
+	margin: var(--size-4-1) 0 0;
+	padding-inline-start: var(--size-4-4);
+}
+
+/*
  * The token field shares that row with the Test button, so it takes whatever
  * space the button leaves rather than a fixed width, and stops shrinking before
  * a pasted token becomes unreadable.

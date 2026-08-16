@@ -1,8 +1,8 @@
-import { App, ButtonComponent, Notice, PluginSettingTab, Setting } from "obsidian";
-import type { SettingDefinitionItem, SettingGroupItem } from "obsidian";
+import { App, ButtonComponent, Notice, PluginSettingTab, Setting, setIcon } from "obsidian";
+import type { SettingDefinitionGroup, SettingDefinitionItem, SettingGroupItem } from "obsidian";
 import type BetterLinkDisplayPlugin from "../main";
 import { detectLanguage, Language, LANGUAGES, setLanguage, t } from "./i18n";
-import { API_BASE } from "./api";
+import { API_BASE, SITE_URL } from "./api";
 import { LOOKUP_TIMEOUT_MS, SiteLookup, VerifyOutcome } from "./lookup";
 import { PREVIEW_ICON } from "./previewIcon";
 
@@ -90,7 +90,12 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 	 * the way past, and the token field debounces its own writes.
 	 */
 	getSettingDefinitions(): SettingDefinitionItem[] {
-		return [
+		const service: SettingDefinitionGroup = {
+			type: "group",
+			heading: t("service.heading"),
+			items: [this.setupNotice(), this.tokenSetting()],
+		};
+		const rest: SettingDefinitionItem[] = [
 			{
 				type: "group",
 				heading: t("general.heading"),
@@ -113,12 +118,36 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 					),
 				],
 			},
-			{
-				type: "group",
-				heading: t("service.heading"),
-				items: [this.tokenSetting()],
-			},
 		];
+		// Nothing else on this page does anything without a token, so until one is
+		// set the page opens on the group that has to be filled in first. The order
+		// is decided here rather than on every keystroke: the definitions are only
+		// rebuilt when the tab is opened again, so the field can't move out from
+		// under the cursor while a token is being pasted into it.
+		return this.plugin.settings.accessToken ? [...rest, service] : [service, ...rest];
+	}
+
+	/**
+	 * The banner above the token field while there is no token: an unconfigured
+	 * plugin does nothing at all, and the failure is otherwise only met later, as
+	 * a notice on the first link the user tries to format.
+	 *
+	 * It is a `visible` predicate rather than a conditional item so that typing
+	 * the first token dismisses it in place — `refreshDomState()` re-runs the
+	 * predicate without rebuilding the page around the field being typed in.
+	 */
+	private setupNotice(): SettingGroupItem {
+		return {
+			name: t("token.setup.name"),
+			desc: t("token.setup.desc"),
+			visible: () => !this.plugin.settings.accessToken,
+			render: (setting) => {
+				setting.settingEl.addClass("better-link-display-setup-notice");
+				const icon = createSpan({ cls: "better-link-display-setup-icon" });
+				setIcon(icon, "alert-triangle");
+				setting.nameEl.prepend(icon);
+			},
+		};
 	}
 
 	private languageSetting(): SettingGroupItem {
@@ -169,7 +198,7 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 	private tokenSetting(): SettingGroupItem {
 		return {
 			name: t("token.name"),
-			desc: t("token.desc"),
+			desc: this.tokenDescription(),
 			render: (setting) => {
 				setting
 					.addText((text) => {
@@ -178,7 +207,13 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 						text.setPlaceholder(t("token.placeholder"))
 							.setValue(this.plugin.settings.accessToken)
 							.onChange((value) => {
+								const had = this.plugin.settings.accessToken !== "";
 								this.plugin.settings.accessToken = value.trim();
+								// The setup banner hangs off a predicate on this value, so
+								// it only follows the field once the predicates are re-run —
+								// and only the transitions can change what it shows.
+								if (had !== (this.plugin.settings.accessToken !== ""))
+									this.refreshDomState();
 								this.queueSave();
 							});
 					})
@@ -190,6 +225,29 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 				setting.settingEl.addClass("better-link-display-stacked-setting");
 			},
 		};
+	}
+
+	/**
+	 * What the token is, followed by the two steps that produce one. The steps
+	 * stay on the row rather than living only in the banner above, because they
+	 * are also what someone comes back for when a token has to be replaced.
+	 *
+	 * A fragment rather than a string so the address is a link; the settings
+	 * search indexes a fragment by its text content, so the steps stay findable.
+	 */
+	private tokenDescription(): DocumentFragment {
+		return createFragment((frag) => {
+			frag.createDiv({ text: t("token.desc") });
+			frag.createDiv({ text: t("token.steps.heading") });
+			const steps = frag.createEl("ol", { cls: "better-link-display-token-steps" });
+			// The template carries `{site}` unsubstituted so the address can be
+			// dropped in as an anchor, wherever the sentence happens to put it.
+			const [before, after] = t("token.steps.login").split("{site}");
+			const login = steps.createEl("li", { text: before });
+			login.createEl("a", { href: SITE_URL, text: SITE_URL });
+			login.appendText(after ?? "");
+			steps.createEl("li", { text: t("token.steps.generate") });
+		});
 	}
 
 	/**

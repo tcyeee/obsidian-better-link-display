@@ -26,6 +26,9 @@ const CODE_INVALID_TOKEN = 125;
 
 export const API_BASE = "https://bookmarkify.cc/api";
 
+/** Where a user signs in to generate the token `API_BASE` expects. */
+export const SITE_URL = "https://bookmarkify.cc";
+
 /** A stable, cheap page to ask about when all we want to know is "does the token work?". */
 const PROBE_URL = "https://example.com";
 
