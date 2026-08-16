@@ -1,6 +1,6 @@
 import { strict as assert } from "node:assert";
 import { test } from "node:test";
-import { findBookmarkRanges, hasInlineIcon } from "./bookmarkScan";
+import { findBookmarkRanges, hasInlineIcon, withoutInlineIcon } from "./bookmarkScan";
 
 /** An icon as this plugin writes one, short enough to keep a case readable. */
 const ICON = "![](data:image/png;base64,iVBORw0KGgo=)";
@@ -58,4 +58,39 @@ test("leaves unterminated markup alone", () => {
 test("recognises a line carrying an icon", () => {
 	assert.equal(hasInlineIcon(`[${ICON} Example](https://example.com)`), true);
 	assert.equal(hasInlineIcon("[Example](https://example.com)"), false);
+});
+
+test("resetting leaves the plain markdown link the bookmark was built from", () => {
+	assert.equal(
+		withoutInlineIcon(`[${ICON} Example](https://example.com)`),
+		"[Example](https://example.com)"
+	);
+});
+
+test("resetting keeps the destination exactly as written", () => {
+	assert.equal(
+		withoutInlineIcon(`[${ICON} Article](https://example.com/a_(b) "Title")`),
+		'[Article](https://example.com/a_(b) "Title")'
+	);
+});
+
+test("resetting takes the icon out from wherever it sits in the link text", () => {
+	assert.equal(
+		withoutInlineIcon(`[Example ${ICON}](https://example.com)`),
+		"[Example](https://example.com)"
+	);
+});
+
+test("resetting an icon-only bookmark falls back to the address", () => {
+	assert.equal(
+		withoutInlineIcon(`[${ICON}](https://example.com)`),
+		"[https://example.com](https://example.com)"
+	);
+});
+
+test("refuses anything that is not exactly one bookmark", () => {
+	assert.equal(withoutInlineIcon("[Example](https://example.com)"), null, "no icon");
+	assert.equal(withoutInlineIcon(`before [${ICON} Example](https://example.com)`), null);
+	assert.equal(withoutInlineIcon(`[${ICON} Example](https://example.com) after`), null);
+	assert.equal(withoutInlineIcon(`${ICON} on its own`), null);
 });

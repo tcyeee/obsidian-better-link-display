@@ -24,6 +24,14 @@ export interface BookmarkRange {
 	to: number;
 }
 
+/** A {@link BookmarkRange} with the inner boundaries only the reset needs. */
+interface BookmarkParts extends BookmarkRange {
+	/** Offset of the first character of the link text, just past the `[`. */
+	textFrom: number;
+	/** Offset of the `]` that closes the link text. */
+	textTo: number;
+}
+
 /** Whether a line carries an inlined icon at all — the cheap first question. */
 export function hasInlineIcon(text: string): boolean {
 	return text.includes(ICON_MARKUP);
@@ -47,9 +55,53 @@ export function findBookmarkRanges(text: string): BookmarkRange[] {
 
 		const range = bookmarkAround(text, icon);
 		if (!range) continue;
-		ranges.push(range);
+		ranges.push({ from: range.from, to: range.to });
 		search = range.to;
 	}
+}
+
+/**
+ * The same bookmark with its icon taken back out — `[![](data:…) Title](url)`
+ * becomes `[Title](url)` — or null when `text` is not exactly one bookmark.
+ *
+ * Refusing anything but a whole bookmark is what makes this safe to hand a
+ * source range and write straight back: a partial match would otherwise be
+ * rebuilt as a link, dropping whatever surrounded it. The destination is copied
+ * verbatim, so a Markdown title after the URL survives, and the link text keeps
+ * the words the user may have edited into it rather than being looked up again.
+ */
+export function withoutInlineIcon(text: string): string | null {
+	const icon = text.indexOf(ICON_MARKUP);
+	if (icon < 0) return null;
+
+	const bookmark = bookmarkAround(text, icon);
+	if (!bookmark || bookmark.from !== 0 || bookmark.to !== text.length) return null;
+
+	const destination = text.slice(bookmark.textTo + 2, bookmark.to - 1);
+	const label = stripIcons(text.slice(bookmark.textFrom, bookmark.textTo));
+	// A bookmark that was nothing but an icon has no title to fall back on, and
+	// `[](url)` renders as an invisible link. The address is at least clickable.
+	return `[${label.length > 0 ? label : destination}](${destination})`;
+}
+
+/**
+ * Every inlined icon removed from a link's text. The loop is defensive rather
+ * than reachable today — `bookmarkAround()` refuses a link text holding a second
+ * image — but a leftover icon would read as a reset that half-worked.
+ */
+function stripIcons(label: string): string {
+	let remaining = label;
+	for (;;) {
+		const icon = remaining.indexOf(ICON_MARKUP);
+		if (icon < 0) break;
+		const image = remaining.lastIndexOf("![", icon);
+		const end = remaining.indexOf(")", icon + ICON_MARKUP.length);
+		if (image < 0 || end < 0) break;
+		remaining = remaining.slice(0, image) + remaining.slice(end + 1);
+	}
+	// The icon is written with a space after it; removing both would otherwise
+	// leave the title indented inside its own brackets.
+	return remaining.replace(/\s+/g, " ").trim();
 }
 
 /**
@@ -58,7 +110,7 @@ export function findBookmarkRanges(text: string): BookmarkRange[] {
  * left unstyled, which is the safe direction: the note renders the same either
  * way.
  */
-function bookmarkAround(text: string, icon: number): BookmarkRange | null {
+function bookmarkAround(text: string, icon: number): BookmarkParts | null {
 	// The image's own opener. Its alt text cannot contain a bracket, or the `]`
 	// found at `icon` would have belonged to something else.
 	const image = text.lastIndexOf("![", icon);
@@ -88,7 +140,7 @@ function bookmarkAround(text: string, icon: number): BookmarkRange | null {
 	if (close < 0 || text[close + 1] !== "(") return null;
 
 	const end = destinationEnd(text, close + 2);
-	return end < 0 ? null : { from: open, to: end + 1 };
+	return end < 0 ? null : { from: open, to: end + 1, textFrom: open + 1, textTo: close };
 }
 
 /**
