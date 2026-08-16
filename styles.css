@@ -23,6 +23,25 @@
 }
 
 /*
+ * The surface the appearance preview sits on: a patch of note, so the sample
+ * bookmark is seen against the background a real one has and in the same text
+ * font. It keeps the note's own background rather than a settings tone, because
+ * the Background option paints the link with `--background-secondary` and a
+ * surface of that colour would hide the very thing being previewed — hence the
+ * outline, which is what separates the patch from the settings pane behind it.
+ */
+.better-link-display-preview {
+	width: 100%;
+	padding: var(--size-4-3) var(--size-4-4);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-primary);
+	font-family: var(--font-text);
+	font-size: var(--font-text-size);
+	line-height: var(--line-height-normal);
+}
+
+/*
  * The verdict the Test button wears for a moment after a test finishes. The
  * whole button is coloured rather than just its label so the answer is readable
  * from the corner of the eye during the second it lasts.
@@ -104,8 +123,14 @@ a.external-link > img[src^="data:image/"] {
  * Centre the embed on the text line — on its own the embed aligns to the
  * baseline and the icon sits low — and drop the resize handle and hover
  * controls a favicon has no use for.
+ *
+ * `display` is the load-bearing one: Obsidian renders the embed as a `div`, and
+ * a block-level box inside the inline plate splits that plate in two and drops
+ * the icon into a line of its own. Inline-block puts the icon back inside the
+ * box, which is where a 16px favicon belongs anyway.
  */
 .cm-editor .image-embed.better-link-display-embed {
+	display: inline-block;
 	vertical-align: middle;
 }
 
@@ -138,47 +163,33 @@ a.external-link > img[src^="data:image/"] {
  * below keys off the same marks as the rules above, so an option only ever
  * reaches links this plugin formatted.
  *
- * In Reading view the whole bookmark is one anchor, so the plate goes there.
- * In Live Preview the icon and the text are separate elements, and which one
- * contains the other depends on how CodeMirror tokenised the line — so the
- * outermost of them is styled and anything nested inside it is left alone,
- * keeping the result a single plate rather than a box within a box.
+ * Each view offers exactly one element that holds a whole bookmark, and the
+ * plate goes on that: the anchor in Reading view, and in Live Preview the span
+ * of a mark decoration covering the bookmark's source range. Live Preview needs
+ * that decoration because it renders the icon and the title as separate
+ * elements — styling them individually draws a box around each, which is one
+ * bookmark shown as two.
+ *
+ * The vertical padding is lopsided on purpose. Both plates are inline boxes, so
+ * they are drawn around the line's text metrics, but the icon is a 16px image
+ * centred on the text with `vertical-align: middle` — which puts its bottom edge
+ * a hair *below* that box. An even padding therefore leaves the icon touching
+ * the bottom of the plate while the top has room to spare; the extra couple of
+ * pixels underneath is what makes the gap around the icon look equal.
  */
 body.better-link-display-background a.external-link.better-link-display-bookmark,
-body.better-link-display-background
-	.cm-editor
-	.cm-line.better-link-display-line
-	.cm-link:not(.cm-link *),
-body.better-link-display-background
-	.cm-editor
-	.cm-line.better-link-display-line
-	.cm-underline:not(.cm-link *),
-body.better-link-display-background
-	.cm-editor
-	.cm-line.better-link-display-line
-	.image-embed.better-link-display-embed:not(.cm-link *) {
+body.better-link-display-background .cm-editor .better-link-display-plate {
 	background-color: var(--background-secondary);
 	border-radius: var(--radius-s);
-	padding-block: 1px;
+	padding-block: 1px 4px;
 	padding-inline: 5px;
 }
 
 body.better-link-display-border a.external-link.better-link-display-bookmark,
-body.better-link-display-border
-	.cm-editor
-	.cm-line.better-link-display-line
-	.cm-link:not(.cm-link *),
-body.better-link-display-border
-	.cm-editor
-	.cm-line.better-link-display-line
-	.cm-underline:not(.cm-link *),
-body.better-link-display-border
-	.cm-editor
-	.cm-line.better-link-display-line
-	.image-embed.better-link-display-embed:not(.cm-link *) {
+body.better-link-display-border .cm-editor .better-link-display-plate {
 	border: 1px solid var(--background-modifier-border);
 	border-radius: var(--radius-s);
-	padding-block: 1px;
+	padding-block: 1px 4px;
 	padding-inline: 5px;
 }
 
