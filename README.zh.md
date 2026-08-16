@@ -50,10 +50,12 @@ https://example.com
 
 插件自己没法读取网页标题，它会去问一个在线小服务 [Bookmarkify](https://bookmarkify.cc)。这个服务需要认得你，所以你需要先拿一个 **访问令牌**，只需配置一次。
 
-1. 打开 [bookmarkify.cc](https://bookmarkify.cc)，登录后进入令牌管理页面。
-2. 生成一个令牌并复制。
+1. 打开 [bookmarkify.cc](https://bookmarkify.cc) 并登录。
+2. 进入 **Setting → AccessToken**，点击 **生成 Token** 并复制。
 3. 回到 Obsidian，打开 **设置 → Better Link Display**，把令牌粘贴到 **访问令牌** 输入框。
 4. 点 **测试**，显示「成功」就配置好了。
+
+在填写令牌之前，插件设置页会把 **解析服务** 一节排在最前面，输入框上方有一条提示，下方也会写着上面这两步。
 
 这个令牌是**只读**的：它只能用来查询网页的标题和图标，无法查看或修改你的书签和账号信息。
 

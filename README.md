@@ -50,10 +50,12 @@ Works on Obsidian 1.13 and later, on desktop and mobile.
 
 The plugin can't read a web page's title on its own — it asks a small online service, [Bookmarkify](https://bookmarkify.cc), to do that. The service needs to know it's you asking, so you need a free **access token** once.
 
-1. Go to [bookmarkify.cc](https://bookmarkify.cc), sign in, and open the token management page.
-2. Create a token and copy it.
+1. Go to [bookmarkify.cc](https://bookmarkify.cc) and sign in.
+2. Open **Setting → AccessToken**, click **Generate Token**, and copy it.
 3. In Obsidian, open **Settings → Better Link Display**, paste the token into the **Access token** box.
 4. Click **Test**. If it says *Success*, you're done.
+
+Until a token is set, the plugin's settings open on the **Lookup service** section with a warning above the box, and these same two steps are printed under it.
 
 The token is **read-only**. It can only be used to look up the title and icon of a web address — it cannot see or change your bookmarks or your account.
 
