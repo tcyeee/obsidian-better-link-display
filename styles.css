@@ -194,22 +194,87 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
 }
 
 /*
- * The "format" button, anchored to the top-right corner of the hovered link.
- * The container is flush so the button fills the popover rather than floating
- * inside a box of padding.
+ * The "format" button, anchored above the right edge of the hovered link.
+ *
+ * It is meant to read as one small floating chip over the note. CodeMirror
+ * puts every hover tooltip inside a shared host and paints it as a grey box of
+ * its own, which would wrap that chip in a second bubble, so the host is
+ * stripped back to nothing — it is marked with the class below from the
+ * tooltip's `mount`, the only place a tooltip can reach its own host. Both of
+ * CodeMirror's classes are named too: its own rule is worth two classes and
+ * lands in the document before this file, so a lone marker would only tie.
  */
+.cm-tooltip.cm-tooltip-hover.better-link-display-tooltip-host {
+	padding: 0;
+	border: none;
+	border-radius: var(--radius-m);
+	background-color: transparent;
+	box-shadow: none;
+	animation: better-link-display-tooltip-in 100ms ease-out;
+}
+
+@keyframes better-link-display-tooltip-in {
+	from {
+		opacity: 0;
+		transform: translateY(3px);
+	}
+
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.cm-tooltip.cm-tooltip-hover.better-link-display-tooltip-host {
+		animation: none;
+	}
+}
+
 .better-link-display-tooltip {
 	display: flex;
 	padding: 0;
 }
 
+/*
+ * The chip itself: raised off the note by its own shadow, quiet until the
+ * pointer reaches it, then filled with the accent colour so it is obvious
+ * which of the two — link or button — the click will hit.
+ */
 .better-link-display-format-button {
-	padding: 2px 10px;
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	height: auto;
+	padding: 3px 9px;
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	background-color: var(--background-primary);
+	color: var(--text-muted);
 	font-size: var(--font-ui-smaller);
+	font-weight: var(--font-medium);
 	line-height: 1.4;
 	white-space: nowrap;
 	cursor: pointer;
-	box-shadow: none;
+	box-shadow: var(--shadow-s);
+	transition:
+		background-color 100ms ease-out,
+		border-color 100ms ease-out,
+		color 100ms ease-out;
+}
+
+.better-link-display-format-button:hover {
+	border-color: var(--interactive-accent);
+	background-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+	box-shadow: var(--shadow-s);
+}
+
+/* Sized down from the icon default, and tinted with the label it sits beside. */
+.better-link-display-format-button .svg-icon {
+	width: 14px;
+	height: 14px;
+	color: inherit;
 }
 
 /*
