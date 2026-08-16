@@ -40,7 +40,7 @@ Nothing happens without a click — opening a note never issues a single request
 
 ## Requirements
 
-- Obsidian 1.0 or later. On mobile, use the command rather than the hover button.
+- Obsidian 1.13 or later. On mobile, use the command rather than the hover button.
 - A connection to the hosted Bookmarkify service at `https://bookmarkify.cc/api`, which resolves page titles and icons.
 - An **access token** generated from that service, used to authenticate requests.
 

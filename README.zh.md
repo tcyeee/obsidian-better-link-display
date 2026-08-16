@@ -40,7 +40,7 @@ https://example.com
 
 ## 依赖条件
 
-- Obsidian 1.0 及以上版本。移动端没有 hover，请使用命令而非悬浮按钮。
+- Obsidian 1.13 及以上版本。移动端没有 hover，请使用命令而非悬浮按钮。
 - 能访问 Bookmarkify 线上服务 `https://bookmarkify.cc/api`，由它负责解析页面标题与图标。
 - 一个从该服务生成的 **AccessToken**，用于请求鉴权。
 
