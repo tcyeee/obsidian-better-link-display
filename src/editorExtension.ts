@@ -295,7 +295,16 @@ export class BetterLinkDisplayEditorFeature {
 			outcome = { ok: false, reason: "server" };
 		}
 
-		if (!view.dom.isConnected) return;
+		// The lookup runs to completion no matter what the note does, but switching
+		// to Reading view detaches this editor's DOM while keeping the EditorView
+		// and its pendingField alive. Writing a bookmark into a view the user
+		// can't see would be wrong — yet abandoning the loading mark strands the
+		// link, because hasMarkOverlapping() then refuses every later format of it
+		// until the editor is torn down. So drop the result but still clear the mark.
+		if (!view.dom.isConnected) {
+			this.clearPending(view, id);
+			return;
+		}
 		const range = findMark(view.state.field(pendingField), id, view.state.doc.length);
 		if (!range) return;
 
@@ -320,11 +329,26 @@ export class BetterLinkDisplayEditorFeature {
 		view.dispatch({ effects: markFailed.of(id) });
 		const timer = window.setTimeout(() => {
 			this.timers.delete(timer);
-			if (view.dom.isConnected) view.dispatch({ effects: clearMark.of(id) });
+			this.clearPending(view, id);
 		}, FAILURE_HIGHLIGHT_MS);
 		this.timers.add(timer);
 
 		new Notice(this.failureMessage(reason), FAILURE_NOTICE_MS);
+	}
+
+	/**
+	 * Remove a pending mark, tolerating a view whose DOM has been detached by a
+	 * switch to Reading view — it still owns the pendingField and needs the
+	 * transaction, or the loading/failure highlight stays on the link for good.
+	 * A view that was actually destroyed (its leaf closed) rejects the dispatch,
+	 * but its state is gone with it, so there is nothing left to strand.
+	 */
+	private clearPending(view: EditorView, id: number): void {
+		try {
+			view.dispatch({ effects: clearMark.of(id) });
+		} catch {
+			// View destroyed; the mark went with its state.
+		}
 	}
 
 	/**
