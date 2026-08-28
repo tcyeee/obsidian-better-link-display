@@ -19,7 +19,10 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-		this.applyAppearance();
+		// `rootSplit` is null until the workspace layout is built, so the first
+		// paint of the appearance classes has to wait for it — the settings
+		// toggles call `applyAppearance()` directly, but by then layout is ready.
+		this.app.workspace.onLayoutReady(() => this.applyAppearance());
 
 		const lookup = new SiteLookup(() => this.settings);
 		this.editorFeature = new BetterLinkDisplayEditorFeature(lookup);
@@ -44,7 +47,8 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 	onunload() {
 		// Guarded because onload may have failed before this was constructed.
 		this.editorFeature?.destroy();
-		this.appearanceBody().removeClass(BACKGROUND_CLASS, BORDER_CLASS);
+		// May be null if the plugin is disabled before the layout is ready.
+		this.appearanceBody()?.removeClass(BACKGROUND_CLASS, BORDER_CLASS);
 	}
 
 	/**
@@ -56,6 +60,7 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 	 */
 	applyAppearance(): void {
 		const body = this.appearanceBody();
+		if (!body) return;
 		body.toggleClass(BACKGROUND_CLASS, this.settings.linkBackground);
 		body.toggleClass(BORDER_CLASS, this.settings.linkBorder);
 	}
@@ -67,8 +72,8 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 	 * would land on a body that styles nothing and the option would appear dead
 	 * until the next restart, when `onload` runs this with the main window active.
 	 */
-	private appearanceBody(): HTMLElement {
-		return this.app.workspace.rootSplit.win.document.body;
+	private appearanceBody(): HTMLElement | null {
+		return this.app.workspace.rootSplit?.win.document.body ?? null;
 	}
 
 	async loadSettings() {
