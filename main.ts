@@ -9,7 +9,7 @@ import { SiteLookup } from "./src/lookup";
 import { BetterLinkDisplayEditorFeature } from "./src/editorExtension";
 import { bookmarkMarkers, markReadingViewBookmarks } from "./src/bookmarkMarks";
 
-/** Set on `body` while the matching appearance option is on. */
+/** Set on the main window's `body` while the matching appearance option is on. */
 const BACKGROUND_CLASS = "better-link-display-background";
 const BORDER_CLASS = "better-link-display-border";
 
@@ -44,17 +44,31 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 	onunload() {
 		// Guarded because onload may have failed before this was constructed.
 		this.editorFeature?.destroy();
-		activeDocument.body.removeClass(BACKGROUND_CLASS, BORDER_CLASS);
+		this.appearanceBody().removeClass(BACKGROUND_CLASS, BORDER_CLASS);
 	}
 
 	/**
-	 * The appearance options are pure styling, so they live as classes on `body`
-	 * that styles.css keys off. Both views pick the change up on the same repaint,
-	 * with nothing to re-render and nothing written into the note.
+	 * The appearance options are pure styling, so they live as two classes on the
+	 * main window's `body` that styles.css keys off. Both views pick the change up
+	 * on the same repaint, with nothing to re-render and nothing written into the
+	 * note. Obsidian copies `body`'s classes into every popout window and keeps
+	 * them in sync, so setting them on the one body reaches bookmarks everywhere.
 	 */
 	applyAppearance(): void {
-		activeDocument.body.toggleClass(BACKGROUND_CLASS, this.settings.linkBackground);
-		activeDocument.body.toggleClass(BORDER_CLASS, this.settings.linkBorder);
+		const body = this.appearanceBody();
+		body.toggleClass(BACKGROUND_CLASS, this.settings.linkBackground);
+		body.toggleClass(BORDER_CLASS, this.settings.linkBorder);
+	}
+
+	/**
+	 * The main window's `body` — deliberately not `activeDocument.body`. This runs
+	 * from the settings toggle's `onChange`, and Obsidian renders settings in a
+	 * separate window, so there `activeDocument` is the settings window: the class
+	 * would land on a body that styles nothing and the option would appear dead
+	 * until the next restart, when `onload` runs this with the main window active.
+	 */
+	private appearanceBody(): HTMLElement {
+		return this.app.workspace.rootSplit.win.document.body;
 	}
 
 	async loadSettings() {
