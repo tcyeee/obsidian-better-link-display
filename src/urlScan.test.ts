@@ -62,10 +62,9 @@ test("ignores every external link form inside inline code", () => {
 });
 
 test("refuses a bare URL that a bracket cut short", () => {
-	// The pattern stops at "(", so formatting would rewrite the link to point at
-	// the truncated address and strand "(bar)" outside it.
+	// The pattern stops at "[" / "{", so formatting would rewrite the link to
+	// point at the truncated address and strand the remainder outside it.
 	for (const line of [
-		"See https://en.wikipedia.org/wiki/Foo_(bar) here",
 		"See https://example.com/a[1] here",
 		"See https://example.com/a{x} here",
 	]) {
@@ -73,8 +72,21 @@ test("refuses a bare URL that a bracket cut short", () => {
 	}
 });
 
-test("still formats a bare URL wrapped in prose parentheses", () => {
-	// A closing bracket after the URL is punctuation, not a truncation.
+test("keeps balanced parentheses inside a bare URL", () => {
+	const wiki = "See https://en.wikipedia.org/wiki/Foo_(bar) here";
+	assert.equal(
+		findExternalLinkAt(wiki, 10)?.url,
+		"https://en.wikipedia.org/wiki/Foo_(bar)"
+	);
+
+	// Encoded query values carry parentheses that pair up mid-string.
+	const amap =
+		"https://ditu.amap.com/ssr/place/BV10877294?id=BV10877294&name=%E7%AB%B9%E6%9D%91(%E5%9C%B0%E9%93%81%E7%AB%99)&source=sug";
+	assert.equal(findExternalLinkAt(`Open ${amap} now`, 20)?.url, amap);
+});
+
+test("still formats a bare URL followed by a prose parenthesis", () => {
+	// A closing parenthesis the URL never opened is punctuation, not part of it.
 	const line = "See it here https://example.com/path) or elsewhere";
 	assert.equal(findExternalLinkAt(line, 20)?.url, "https://example.com/path");
 });
@@ -111,6 +123,7 @@ test("every parsed URL round-trips through the written bookmark", () => {
 	const sources = [
 		"https://example.com/path",
 		"See https://example.com/x?a=1&b=2 now",
+		"See https://example.com/wiki/Foo_(bar) now",
 		"[docs](<https://example.com/a b>)",
 		'[docs](https://example.com/a_(b) "title")',
 		"Open <https://example.com/path>",
