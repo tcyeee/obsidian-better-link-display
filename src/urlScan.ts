@@ -5,17 +5,21 @@
  */
 
 /**
- * Parentheses and brackets are excluded so a match can never swallow the
+ * Square and curly brackets are excluded so a match can never swallow the
  * surrounding markdown link syntax. A URL that legitimately contains one is
  * therefore cut short, which {@link BRACKET_AFTER_MATCH} detects and refuses.
+ *
+ * Parentheses are *not* excluded — encoded query values and Wikipedia-style
+ * paths routinely contain them — but a closing one that the URL never opened
+ * belongs to the surrounding prose, which {@link trimToBalancedParens} strips.
  */
-const BARE_URL = /https?:\/\/[^\s<>()[\]{}"'`\\]+/gi;
+const BARE_URL = /https?:\/\/[^\s<>[\]{}"'`\\]+/gi;
 
 /**
  * An opening bracket directly after a match means {@link BARE_URL} stopped
  * early and the real URL continues past what was matched.
  */
-const BRACKET_AFTER_MATCH = /[([{]/;
+const BRACKET_AFTER_MATCH = /[[{]/;
 
 /** Sentence punctuation that follows a URL belongs to the sentence, not the URL. */
 const TRAILING_PUNCTUATION = /[.,;:!?'"，。、；：！？）】]+$/;
@@ -34,6 +38,24 @@ export interface MarkdownLinkHit {
 	/** Offset just past the closing `)`. */
 	to: number;
 	url: string;
+}
+
+/**
+ * Cut a bare-URL match at the first closing parenthesis it never opened. A
+ * balanced pair — `Foo_(bar)`, `name=%E7%AB%B9(%E5%9C%B0)` — is kept; a lone
+ * `)` is the end of `(see https://example.com/x)` and is left to the sentence.
+ */
+function trimToBalancedParens(url: string): string {
+	let depth = 0;
+	for (let i = 0; i < url.length; i++) {
+		const char = url.charAt(i);
+		if (char === "(") depth += 1;
+		else if (char === ")") {
+			if (depth === 0) return url.slice(0, i);
+			depth -= 1;
+		}
+	}
+	return url;
 }
 
 function isEscaped(text: string, index: number): boolean {
@@ -134,7 +156,7 @@ export function findBareUrlAt(line: string, offset: number): UrlHit | null {
 	let match: RegExpExecArray | null;
 	while ((match = BARE_URL.exec(line)) !== null) {
 		const start = match.index;
-		const url = match[0].replace(TRAILING_PUNCTUATION, "");
+		const url = trimToBalancedParens(match[0]).replace(TRAILING_PUNCTUATION, "");
 		if (url.length === 0) continue;
 		const end = start + url.length;
 		if (offset < start || offset > end) continue;
