@@ -1,5 +1,6 @@
 import { arrayBufferToBase64, requestUrl } from "obsidian";
 import { isSafeFaviconSrc } from "./urlScan";
+import { logWarn } from "./log";
 
 /**
  * Icons are written into the note itself, so they are rendered at their natural
@@ -29,28 +30,53 @@ export async function toInlineIcon(src: string): Promise<string> {
 	// image: the decoder must never be handed `data:text/html,…` on the word of
 	// whatever server happens to be configured.
 	let source: string;
-	if (src.startsWith("data:")) source = isSafeFaviconSrc(src) ? src : "";
-	else source = await download(src);
+	if (src.startsWith("data:")) {
+		source = isSafeFaviconSrc(src) ? src : "";
+		if (!source) logWarn("favicon: inline data: URL rejected by isSafeFaviconSrc()");
+	} else {
+		source = await download(src);
+	}
 	if (!source) return "";
 
 	const inlined = await encodeAtTargetResolution(source);
-	return inlined.length <= MAX_INLINE_LENGTH ? inlined : "";
+	if (inlined.length > MAX_INLINE_LENGTH) {
+		logWarn(
+			`favicon: encoded icon is ${inlined.length} bytes, over the ${MAX_INLINE_LENGTH} cap — dropped`
+		);
+		return "";
+	}
+	return inlined;
 }
 
 async function download(src: string): Promise<string> {
-	if (!/^https:\/\//i.test(src)) return "";
+	if (!/^https:\/\//i.test(src)) {
+		logWarn(`favicon: refusing to download a non-https source: ${src}`);
+		return "";
+	}
 
 	try {
 		const response = await requestUrl({ url: src, method: "GET", throw: false });
-		if (response.status !== 200) return "";
-		if (response.arrayBuffer.byteLength > MAX_SOURCE_BYTES) return "";
+		if (response.status !== 200) {
+			logWarn(`favicon: download returned HTTP ${response.status} for ${src}`);
+			return "";
+		}
+		if (response.arrayBuffer.byteLength > MAX_SOURCE_BYTES) {
+			logWarn(
+				`favicon: download is ${response.arrayBuffer.byteLength} bytes, over the ${MAX_SOURCE_BYTES} cap — ${src}`
+			);
+			return "";
+		}
 
 		const mime = (response.headers["content-type"] ?? "").split(";")[0].trim().toLowerCase();
-		if (!mime.startsWith("image/")) return "";
+		if (!mime.startsWith("image/")) {
+			logWarn(`favicon: download had a non-image content-type "${mime}" for ${src}`);
+			return "";
+		}
 
 		return `data:${mime};base64,${arrayBufferToBase64(response.arrayBuffer)}`;
-	} catch {
+	} catch (error) {
 		// A missing icon is never worth failing the whole lookup over.
+		logWarn(`favicon: download threw for ${src}`, error);
 		return "";
 	}
 }
@@ -63,13 +89,19 @@ async function download(src: string): Promise<string> {
  */
 async function encodeAtTargetResolution(dataUrl: string): Promise<string> {
 	const image = await decodeImage(dataUrl);
-	if (!image || image.naturalWidth < 1 || image.naturalHeight < 1) return "";
+	if (!image || image.naturalWidth < 1 || image.naturalHeight < 1) {
+		logWarn("favicon: decoded image has no usable dimensions — dropped");
+		return "";
+	}
 
 	const canvas = createEl("canvas");
 	canvas.width = ICON_PX;
 	canvas.height = ICON_PX;
 	const context = canvas.getContext("2d");
-	if (!context) return "";
+	if (!context) {
+		logWarn("favicon: could not get a 2d canvas context — icon dropped");
+		return "";
+	}
 
 	context.imageSmoothingEnabled = true;
 	context.imageSmoothingQuality = "high";
@@ -93,9 +125,10 @@ async function decodeImage(dataUrl: string): Promise<HTMLImageElement | null> {
 	try {
 		await image.decode();
 		return image;
-	} catch {
+	} catch (error) {
 		// Undecodable (a broken or exotic format) — better no icon than a blob
 		// that renders as a broken image everywhere the note travels.
+		logWarn("favicon: image failed to decode", error);
 		return null;
 	}
 }

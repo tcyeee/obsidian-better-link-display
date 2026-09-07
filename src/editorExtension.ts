@@ -14,6 +14,7 @@ import { withoutInlineIcon } from "./bookmarkScan";
 import { inVerbatimBlock } from "./verbatim";
 import { t } from "./i18n";
 import { API_BASE } from "./api";
+import { logError, logWarn } from "./log";
 
 /**
  * The button should feel instant. CodeMirror treats a zero here as "use the
@@ -291,7 +292,8 @@ export class BetterLinkDisplayEditorFeature {
 		let outcome: LookupOutcome;
 		try {
 			outcome = await this.lookup.resolve(url);
-		} catch {
+		} catch (error) {
+			logError(`link format: lookup threw for ${url}`, error);
 			outcome = { ok: false, reason: "server" };
 		}
 
@@ -316,6 +318,9 @@ export class BetterLinkDisplayEditorFeature {
 		// The user may have edited the URL away while the request was in flight;
 		// rewriting whatever now sits at those offsets would corrupt the note.
 		if (view.state.sliceDoc(range.from, range.to) !== source) {
+			logWarn(
+				`link format: source text at the target range changed while the lookup ran — ${url} left untouched`
+			);
 			view.dispatch({ effects: clearMark.of(id) });
 			return;
 		}
@@ -326,6 +331,7 @@ export class BetterLinkDisplayEditorFeature {
 	}
 
 	private reportFailure(view: EditorView, id: number, reason: LookupFailure): void {
+		logWarn(`link format failed, reason: ${reason}`);
 		view.dispatch({ effects: markFailed.of(id) });
 		const timer = window.setTimeout(() => {
 			this.timers.delete(timer);
