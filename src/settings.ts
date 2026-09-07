@@ -5,6 +5,7 @@ import { detectLanguage, Language, LANGUAGES, setLanguage, t } from "./i18n";
 import { API_BASE, SITE_URL } from "./api";
 import { LOOKUP_TIMEOUT_MS, SiteLookup, VerifyOutcome } from "./lookup";
 import { PREVIEW_ICON } from "./previewIcon";
+import { logError } from "./log";
 
 export interface BetterLinkDisplaySettings {
 	accessToken: string;
@@ -309,7 +310,8 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 		let outcome: VerifyOutcome;
 		try {
 			outcome = await this.lookup.verify(token);
-		} catch {
+		} catch (error) {
+			logError("token test: verification threw", error);
 			outcome = { ok: false, reason: "server" };
 		}
 

@@ -1,5 +1,6 @@
 import { requestUrl } from "obsidian";
 import { toInlineIcon } from "./favicon";
+import { logError, logInfo, logWarn } from "./log";
 
 export interface SiteInfo {
 	title: string;
@@ -55,6 +56,8 @@ function isSiteInfo(value: unknown): value is SiteInfo {
 async function siteInfoRequest(url: string, token: string): Promise<RequestOutcome> {
 	const endpoint = `${API_BASE}/extension/site-info?url=${encodeURIComponent(url)}`;
 
+	logInfo(`site-info request → GET ${endpoint}`);
+
 	let status: number;
 	let body: unknown;
 	try {
@@ -66,17 +69,35 @@ async function siteInfoRequest(url: string, token: string): Promise<RequestOutco
 		});
 		status = response.status;
 		body = response.json;
-	} catch {
+	} catch (error) {
 		// Nothing answered at all — almost always no network, or the service down.
+		logError(`site-info request threw (no response) for ${endpoint}`, error);
 		return { ok: false, failure: "unreachable" };
 	}
 
-	if (status === 401 || status === 403) return { ok: false, failure: "auth" };
-	if (status !== 200) return { ok: false, failure: "server" };
-	if (!body || typeof body !== "object") return { ok: false, failure: "server" };
+	logInfo(`site-info response ← HTTP ${status} for ${endpoint}`, body);
+
+	if (status === 401 || status === 403) {
+		logWarn(`site-info rejected the token: HTTP ${status} for ${endpoint}`, body);
+		return { ok: false, failure: "auth" };
+	}
+	if (status !== 200) {
+		logError(`site-info returned an unexpected HTTP ${status} for ${endpoint}`, body);
+		return { ok: false, failure: "server" };
+	}
+	if (!body || typeof body !== "object") {
+		logError(`site-info returned a non-object body for ${endpoint}`, body);
+		return { ok: false, failure: "server" };
+	}
 
 	const payload = body as Payload;
-	if (payload.code === CODE_INVALID_TOKEN) return { ok: false, failure: "auth" };
+	if (payload.code === CODE_INVALID_TOKEN) {
+		logWarn(
+			`site-info reported an invalid token (code ${CODE_INVALID_TOKEN}) for ${endpoint}`,
+			payload
+		);
+		return { ok: false, failure: "auth" };
+	}
 	return { ok: true, payload };
 }
 
@@ -87,10 +108,12 @@ export async function fetchSiteInfo(url: string, token: string): Promise<FetchRe
 	const { payload } = outcome;
 	if (payload.ok === true && isSiteInfo(payload.data)) {
 		const favicon = await toInlineIcon(payload.data.favicon);
+		if (!favicon) logWarn(`site-info resolved ${url} but produced no usable favicon`);
 		return { ok: true, info: { title: payload.data.title, favicon } };
 	}
 
 	// The service answered, but could not read the page behind the URL.
+	logWarn(`site-info could not resolve ${url}`, payload);
 	return { ok: false, failure: "unresolved" };
 }
 

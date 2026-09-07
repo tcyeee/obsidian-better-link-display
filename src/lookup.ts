@@ -1,4 +1,5 @@
 import { fetchSiteInfo, SiteInfo, verifyToken } from "./api";
+import { logWarn } from "./log";
 
 /**
  * The service documents a ~300ms rate limit per token. Requests are issued one
@@ -46,9 +47,18 @@ export class SiteLookup {
 	 */
 	async resolve(url: string): Promise<LookupOutcome> {
 		const { accessToken } = this.getConfig();
-		if (!accessToken) return { ok: false, reason: "unconfigured" };
+		if (!accessToken) {
+			logWarn(`lookup for ${url} skipped: no access token configured`);
+			return { ok: false, reason: "unconfigured" };
+		}
 
-		return this.withTimeout(() => this.request(url), { ok: false, reason: "timeout" });
+		const outcome = await this.withTimeout<LookupOutcome>(() => this.request(url), {
+			ok: false,
+			reason: "timeout",
+		});
+		if (!outcome.ok && outcome.reason === "timeout")
+			logWarn(`lookup for ${url} timed out after ${LOOKUP_TIMEOUT_MS}ms`);
+		return outcome;
 	}
 
 	/**
@@ -59,10 +69,13 @@ export class SiteLookup {
 	async verify(token: string): Promise<VerifyOutcome> {
 		if (!token) return { ok: false, reason: "unconfigured" };
 
-		return this.withTimeout(async (): Promise<VerifyOutcome> => {
+		const outcome = await this.withTimeout<VerifyOutcome>(async (): Promise<VerifyOutcome> => {
 			const result = await verifyToken(token);
 			return result.ok ? { ok: true } : { ok: false, reason: result.failure };
 		}, { ok: false, reason: "timeout" });
+		if (!outcome.ok && outcome.reason === "timeout")
+			logWarn(`token verification timed out after ${LOOKUP_TIMEOUT_MS}ms`);
+		return outcome;
 	}
 
 	/** Run a queued task, resolving to `onTimeout` if it takes too long. */
