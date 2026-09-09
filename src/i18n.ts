@@ -56,6 +56,12 @@ const en = {
 	"button.format": "Format",
 	"button.reformat": "Reformat",
 	"button.reset": "Reset",
+	"button.customName": "Custom name",
+	"button.save": "Save",
+	"button.cancel": "Cancel",
+	"customName.label": "Title",
+	"customName.placeholder": "Enter a custom title",
+	"customName.changed": "Better Link Display: the link changed or its editor was closed. Please open the link's menu again.",
 
 	"failure.unconfigured":
 		"Better Link Display: set the access token in Settings → Better Link Display first.",
@@ -113,6 +119,12 @@ const zh: Record<TranslationKey, string> = {
 	"button.format": "格式化",
 	"button.reformat": "重新格式化",
 	"button.reset": "重置",
+	"button.customName": "自定义名称",
+	"button.save": "保存",
+	"button.cancel": "取消",
+	"customName.label": "标题",
+	"customName.placeholder": "请输入自定义标题",
+	"customName.changed": "Better Link Display：链接已更改或编辑器已关闭，请重新打开链接菜单。",
 
 	"failure.unconfigured": "Better Link Display：请先在「设置 → Better Link Display」中填写访问令牌。",
 	"failure.auth": "Better Link Display：访问令牌无效或已被吊销，请重新生成并填入设置。",

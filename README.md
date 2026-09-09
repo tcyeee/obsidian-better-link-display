@@ -40,6 +40,10 @@ No mouse (or on mobile)? Put the cursor in the link and run **Format link under 
 
 The menu on an already-formatted link offers **Reformat** (look it up again) and **Reset** (strip the icon, leaving `[Title](url)` — instant and offline).
 
+Choose **Custom name** on any link to enter your own title, then **Save** (or press Enter). This works offline and keeps the existing icon. Reformat replaces the custom title with the site's title again.
+
+When no icon is available, formatting or setting a custom name uses the root domain's first letter on a grey background as the logo.
+
 If a lookup fails, a notice explains why and your note is left untouched.
 
 ## Settings

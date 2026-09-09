@@ -43,10 +43,11 @@ type RequestOutcome =
 	| { ok: true; payload: Payload }
 	| { ok: false; failure: Exclude<FetchFailure, "unresolved"> };
 
-function isSiteInfo(value: unknown): value is SiteInfo {
+function isSiteInfo(value: unknown): value is { title: string; favicon?: string | null } {
 	if (!value || typeof value !== "object") return false;
 	const candidate = value as Partial<SiteInfo>;
-	return typeof candidate.title === "string" && typeof candidate.favicon === "string";
+	return typeof candidate.title === "string" &&
+		(candidate.favicon == null || typeof candidate.favicon === "string");
 }
 
 /**
@@ -107,7 +108,7 @@ export async function fetchSiteInfo(url: string, token: string): Promise<FetchRe
 
 	const { payload } = outcome;
 	if (payload.ok === true && isSiteInfo(payload.data)) {
-		const favicon = await toInlineIcon(payload.data.favicon);
+		const favicon = await toInlineIcon(payload.data.favicon ?? "");
 		if (!favicon) logWarn(`site-info resolved ${url} but produced no usable favicon`);
 		return { ok: true, info: { title: payload.data.title, favicon } };
 	}
