@@ -1,6 +1,7 @@
 import { arrayBufferToBase64, requestUrl } from "obsidian";
 import { isSafeFaviconSrc } from "./urlScan";
 import { logWarn } from "./log";
+import { siteInitial } from "./siteInitial";
 
 /**
  * Icons are written into the note itself, so they are rendered at their natural
@@ -15,6 +16,23 @@ const MAX_SOURCE_BYTES = 512 * 1024;
 
 /** Cap pathological output without rejecting normal 48px PNG favicons. */
 const MAX_INLINE_LENGTH = 32 * 1024;
+
+/** A local PNG keeps the fallback portable just like a downloaded favicon. */
+export function fallbackIcon(url: string): string {
+	const canvas = createEl("canvas");
+	canvas.width = ICON_PX;
+	canvas.height = ICON_PX;
+	const context = canvas.getContext("2d");
+	if (!context) return "";
+	context.fillStyle = "#808080";
+	context.fillRect(0, 0, ICON_PX, ICON_PX);
+	context.fillStyle = "#ffffff";
+	context.font = "bold 32px sans-serif";
+	context.textAlign = "center";
+	context.textBaseline = "middle";
+	context.fillText(siteInitial(url), ICON_PX / 2, ICON_PX / 2, ICON_PX - 8);
+	return canvas.toDataURL("image/png");
+}
 
 /**
  * Turn whatever the service returned into a self-contained `data:` URL.

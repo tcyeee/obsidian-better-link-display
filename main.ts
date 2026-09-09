@@ -25,7 +25,7 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 		this.app.workspace.onLayoutReady(() => this.applyAppearance());
 
 		const lookup = new SiteLookup(() => this.settings);
-		this.editorFeature = new BetterLinkDisplayEditorFeature(lookup);
+		this.editorFeature = new BetterLinkDisplayEditorFeature(this.app, lookup);
 
 		this.addSettingTab(new BetterLinkDisplaySettingTab(this.app, this, lookup));
 		this.registerEditorExtension(this.editorFeature.extension);

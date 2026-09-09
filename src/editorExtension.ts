@@ -1,4 +1,4 @@
-import { Editor, Notice, setIcon } from "obsidian";
+import { App, Editor, Notice, setIcon } from "obsidian";
 import { Extension, StateEffect, StateField, Text } from "@codemirror/state";
 import {
 	Decoration,
@@ -19,6 +19,9 @@ import { inVerbatimBlock } from "./verbatim";
 import { t } from "./i18n";
 import { API_BASE } from "./api";
 import { logError, logWarn } from "./log";
+import { fallbackIcon } from "./favicon";
+import { currentLinkName, withCustomName } from "./customName";
+import { CustomNameModal } from "./customNameModal";
 
 /**
  * The menu should feel instant. CodeMirror treats a zero here as "use the
@@ -34,6 +37,8 @@ const FAILURE_NOTICE_MS = 8000;
 
 /** Marks the URL that is currently being resolved. */
 const startLoading = StateEffect.define<{ id: number; from: number; to: number }>();
+/** Track an open name dialog through edits without displaying a loading animation. */
+const startNaming = StateEffect.define<{ id: number; from: number; to: number }>();
 /** Turns a loading mark into a failure highlight, in place. */
 const markFailed = StateEffect.define<number>();
 /** Removes a mark entirely, whether it was loading or failed. */
@@ -68,9 +73,11 @@ const pendingField = StateField.define<DecorationSet>({
 	update(marks, tr) {
 		marks = marks.map(tr.changes);
 		for (const effect of tr.effects) {
-			if (effect.is(startLoading)) {
+			if (effect.is(startLoading) || effect.is(startNaming)) {
 				const { id, from, to } = effect.value;
-				marks = marks.update({ add: [loadingMark(id).range(from, to)] });
+				const mark = effect.is(startLoading)
+					? loadingMark(id) : Decoration.mark({ betterLinkDisplayId: id });
+				marks = marks.update({ add: [mark.range(from, to)] });
 			} else if (effect.is(markFailed)) {
 				const range = findMark(marks, effect.value, tr.newDoc.length);
 				marks = marks.update({ filter: (_f, _t, value) => markId(value) !== effect.value });
@@ -151,6 +158,7 @@ export class BetterLinkDisplayEditorFeature {
 	readonly extension: Extension;
 	private nextId = 1;
 	private timers = new Set<number>();
+	private nameModals = new Set<CustomNameModal>();
 	/**
 	 * Where the pointer last was over the editor, and the rendered link it was
 	 * on. Live Preview draws a table as one widget, so CodeMirror's hover reports
@@ -167,12 +175,13 @@ export class BetterLinkDisplayEditorFeature {
 	/** The open table menu, for the closing rules the hover would otherwise own. */
 	private tableMenu: HTMLElement | null = null;
 
-	constructor(private readonly lookup: SiteLookup) {
+	constructor(private readonly app: App, private readonly lookup: SiteLookup) {
 		this.extension = [pendingField, tableMenuField, this.tooltip(), this.pointerTracking()];
 	}
 
 	/** Cancel the pending failure-highlight timers. */
 	destroy(): void {
+		for (const modal of this.nameModals) modal.close();
 		for (const timer of this.timers) window.clearTimeout(timer);
 		this.timers.clear();
 	}
@@ -413,6 +422,9 @@ export class BetterLinkDisplayEditorFeature {
 			plain === null ? t("button.format") : t("button.reformat"),
 			() => void this.format(view, from, to, source, url, escapePipes)
 		);
+		this.menuItem(container, view, "pencil", t("button.customName"), () =>
+			this.customName(view, from, to, source, url, escapePipes)
+		);
 
 		if (plain !== null) {
 			this.menuItem(container, view, "rotate-ccw", t("button.reset"), () =>
@@ -465,6 +477,35 @@ export class BetterLinkDisplayEditorFeature {
 		if (view.state.sliceDoc(from, to) !== source) return;
 		if (hasMarkOverlapping(view, from, to)) return;
 		view.dispatch({ changes: { from, to, insert: plain } });
+	}
+
+	private customName(
+		view: EditorView, from: number, to: number, source: string, url: string, escapePipes: boolean
+	): void {
+		if (!view.dom.isConnected || !view.state.facet(EditorView.editable)) return;
+		if (view.state.sliceDoc(from, to) !== source || hasMarkOverlapping(view, from, to)) return;
+		const id = this.nextId++;
+		view.dispatch({ effects: startNaming.of({ id, from, to }) });
+		const modal = new CustomNameModal(this.app, currentLinkName(source), (name) => {
+			const range = findMark(view.state.field(pendingField), id, view.state.doc.length);
+			if (!view.dom.isConnected || !view.state.facet(EditorView.editable) || !range ||
+				view.state.sliceDoc(range.from, range.to) !== source) {
+				new Notice(t("customName.changed"));
+				return;
+			}
+			view.dispatch({
+				changes: {
+					from: range.from, to: range.to,
+					insert: withCustomName(source, url, name, fallbackIcon(url), escapePipes),
+				},
+				effects: clearMark.of(id),
+			});
+		}, () => {
+			this.clearPending(view, id);
+			this.nameModals.delete(modal);
+		});
+		this.nameModals.add(modal);
+		modal.open();
 	}
 
 	private async format(
@@ -711,7 +752,8 @@ function tableBlockAt(doc: Text, lineNumber: number): { start: number; end: numb
  * marker that would otherwise linger in the user's file for good.
  */
 export function bookmarkMarkdown(info: { title: string; favicon: string }, url: string): string {
-	const icon = info.favicon ? `![](${info.favicon}) ` : "";
+	const favicon = info.favicon || fallbackIcon(url);
+	const icon = favicon ? `![](${favicon}) ` : "";
 	return `[${icon}${toLinkText(info.title, url)}](${toLinkDestination(url)})`;
 }
 
