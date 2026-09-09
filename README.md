@@ -28,7 +28,7 @@ The token is read-only — it can only look up a page's title and icon.
 
 ## Use
 
-In editing mode, hover a link and click **Format**. Works with all three forms:
+In editing mode, hover a link and pick **Format** from the little menu. Works with all three forms:
 
 ```
 https://example.com
@@ -38,7 +38,7 @@ https://example.com
 
 No mouse (or on mobile)? Put the cursor in the link and run **Format link under cursor** from the command palette.
 
-Hovering an already-formatted link gives **Reformat** (look it up again) and **Reset** (strip the icon, leaving `[Title](url)` — instant and offline).
+The menu on an already-formatted link offers **Reformat** (look it up again) and **Reset** (strip the icon, leaving `[Title](url)` — instant and offline).
 
 If a lookup fails, a notice explains why and your note is left untouched.
 
@@ -56,7 +56,7 @@ Background and Border are purely visual and change nothing in your notes.
 
 ## Notes
 
-- No Format button appears in Reading view, inside code blocks or frontmatter, or on image embeds.
+- No menu appears in Reading view, inside code blocks or frontmatter, or on image embeds.
 - A bare URL containing brackets — `https://en.wikipedia.org/wiki/Foo_(bar)` — is skipped, since Markdown can't tell where it ends. Wrap it in `<…>` or write it as `[text](url)`.
 - Because the icon is inlined, formatted lines look long in Source mode (~1,300–4,800 characters per icon). Live Preview and Reading view show only the icon and title.
 - Nothing is sent anywhere until you click **Format**: one lookup request, one icon download (`https` images only).

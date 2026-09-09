@@ -231,14 +231,21 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
 }
 
 /*
- * The hover buttons, anchored above the right edge of the hovered link — one to
- * format, plus a second to reset when the link is already a bookmark.
+ * The hover menu, dropped from the pointer over a link — one item to format,
+ * plus a second to reset when the link is already a bookmark.
  *
- * It is meant to read as one small floating chip over the note. CodeMirror
- * puts every hover tooltip inside a shared host and paints it as a grey box of
- * its own, which would wrap that chip in a second bubble, so the host is
- * stripped back to nothing — it is marked with the class below from the
- * tooltip's `mount`, the only place a tooltip can reach its own host. Both of
+ * It is meant to read as a right-click menu, so it is built from Obsidian's own
+ * `menu` markup and inherits the theme's menu styling rather than imitating it.
+ * Only what a menu inside a tooltip cannot keep is undone here:
+ *
+ *  - `position: fixed`, which would take the panel out of the host's flow, and
+ *    the host is exactly what CodeMirror measures to place the menu.
+ *  - `max-height`, a percentage of a host that has no height of its own.
+ *
+ * CodeMirror puts every hover tooltip inside a shared host and paints it as a
+ * grey box, which would wrap the panel in a second one, so the host is stripped
+ * back to nothing — it is marked with the class below from the tooltip's
+ * `mount`, the only place a tooltip can reach its own host. Both of
  * CodeMirror's classes are named too: its own rule is worth two classes and
  * lands in the document before this file, so a lone marker would only tie.
  */
@@ -254,7 +261,7 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
 @keyframes better-link-display-tooltip-in {
 	from {
 		opacity: 0;
-		transform: translateY(3px);
+		transform: translateY(-3px);
 	}
 
 	to {
@@ -264,56 +271,38 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
 }
 
 @media (prefers-reduced-motion: reduce) {
-	.cm-tooltip.cm-tooltip-hover.better-link-display-tooltip-host {
+	.cm-tooltip.cm-tooltip-hover.better-link-display-tooltip-host,
+	.cm-editor .cm-tooltip.better-link-display-menu {
 		animation: none;
 	}
 }
 
-.better-link-display-tooltip {
-	display: flex;
-	gap: 4px;
-	padding: 0;
+.cm-tooltip .better-link-display-menu {
+	position: static;
+	max-height: none;
 }
 
 /*
- * The chip itself: raised off the note by its own shadow, quiet until the
- * pointer reaches it, then filled with the accent colour so it is obvious
- * which of the two — link or button — the click will hit.
+ * The menu for a link inside a table is shown on its own rather than through a
+ * hover tooltip, so the panel *is* the element CodeMirror paints its own
+ * light/dark tooltip box onto — and only what that box sets has to be put back.
+ * Reaching it through `.cm-editor`, which every tooltip is a child of, is what
+ * gives this rule the three classes CodeMirror's own is worth.
  */
-.better-link-display-format-button {
-	display: inline-flex;
-	align-items: center;
-	gap: 4px;
-	height: auto;
-	padding: 3px 9px;
-	border: 1px solid var(--background-modifier-border);
-	border-radius: var(--radius-m);
-	background-color: var(--background-primary);
-	color: var(--text-muted);
-	font-size: var(--font-ui-smaller);
-	font-weight: var(--font-medium);
-	line-height: 1.4;
-	white-space: nowrap;
-	cursor: pointer;
-	box-shadow: var(--shadow-s);
-	transition:
-		background-color 100ms ease-out,
-		border-color 100ms ease-out,
-		color 100ms ease-out;
+.cm-editor .cm-tooltip.better-link-display-menu {
+	border: 1px solid var(--background-modifier-border-hover);
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+	animation: better-link-display-tooltip-in 100ms ease-out;
 }
 
-.better-link-display-format-button:hover {
-	border-color: var(--interactive-accent);
-	background-color: var(--interactive-accent);
-	color: var(--text-on-accent);
-	box-shadow: var(--shadow-s);
-}
-
-/* Sized down from the icon default, and tinted with the label it sits beside. */
-.better-link-display-format-button .svg-icon {
-	width: 14px;
-	height: 14px;
-	color: inherit;
+/*
+ * Obsidian highlights the item under the pointer by putting `selected` on it
+ * from its own menu code, which never runs for a menu built by hand — so the
+ * same highlight is spelled out here, in the theme's colour.
+ */
+.better-link-display-menu .menu-item:hover {
+	background-color: var(--background-modifier-hover);
 }
 
 /*
