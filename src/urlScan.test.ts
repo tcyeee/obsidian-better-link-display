@@ -3,6 +3,7 @@ import { test } from "node:test";
 import {
 	findExternalLinkAt,
 	findMarkdownLinks,
+	findRenderedLinkSource,
 	toLinkDestination,
 	toLinkText,
 } from "./urlScan";
@@ -28,7 +29,7 @@ test("returns the full source range for a Markdown link", () => {
 test("supports balanced parentheses and an optional Markdown title", () => {
 	const line = '[docs](https://example.com/a_(b) "Example title")';
 	assert.deepEqual(findMarkdownLinks(line), [
-		{ from: 0, to: line.length, url: "https://example.com/a_(b)" },
+		{ from: 0, to: line.length, url: "https://example.com/a_(b)", text: "docs" },
 	]);
 });
 
@@ -111,6 +112,35 @@ test("makes a title safe to use as link text", () => {
 	assert.equal(toLinkText("ends with\\", "u"), "ends with\\\\");
 	// An unusable title falls back to the URL, which is sanitised in turn.
 	assert.equal(toLinkText("   ", "https://example.com/[x]"), "https://example.com/x");
+});
+
+test("recovers a table cell's link from its rendered anchor", () => {
+	const block = [
+		"| Site | Dashboard |",
+		"| --- | --- |",
+		"| Blog | [Umami埋点](https://statis.example.com/websites/43465630-ffbe) |",
+		"| Shop | [Stats](https://statis.example.com/websites/00000000-aaaa) |",
+	].join("\n");
+
+	const hit = findRenderedLinkSource(block, {
+		url: "https://statis.example.com/websites/43465630-ffbe",
+		text: "Umami埋点",
+	});
+	assert.ok(hit);
+	assert.equal(block.slice(hit.from, hit.to), "[Umami埋点](https://statis.example.com/websites/43465630-ffbe)");
+});
+
+test("breaks a tie between same-URL cells on the visible text", () => {
+	const block =
+		"| [Open the report](https://x.example/r) | [报告](https://x.example/r) |";
+	const hit = findRenderedLinkSource(block, { url: "https://x.example/r", text: "报告" });
+	assert.equal(hit?.text, "报告");
+});
+
+test("returns nothing when the anchor matches no single link", () => {
+	const block = "| [A](https://x.example/a) | [A](https://x.example/a) |";
+	assert.equal(findRenderedLinkSource(block, { url: "https://x.example/a", text: "A" }), null);
+	assert.equal(findRenderedLinkSource(block, { url: "https://x.example/missing", text: "Z" }), null);
 });
 
 /**
