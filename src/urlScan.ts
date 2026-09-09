@@ -38,6 +38,8 @@ export interface MarkdownLinkHit {
 	/** Offset just past the closing `)`. */
 	to: number;
 	url: string;
+	/** The raw link text between `[` and `]`, brackets excluded. */
+	text: string;
 }
 
 /**
@@ -188,10 +190,45 @@ export function findMarkdownLinks(text: string): MarkdownLinkHit[] {
 		const destination = markdownDestination(text, closeBracket + 1);
 		if (!destination) continue;
 
-		hits.push({ from: open, to: destination.closeParen + 1, url: destination.url });
+		hits.push({
+			from: open,
+			to: destination.closeParen + 1,
+			url: destination.url,
+			text: text.slice(open + 1, closeBracket),
+		});
 		open = destination.closeParen;
 	}
 	return hits;
+}
+
+/**
+ * Locate the `[text](url)` link a rendered anchor was produced from, given the
+ * Markdown block it lives in. Live Preview renders a table as a single widget,
+ * so a link in a cell has no document offset the caller can scan from — only the
+ * anchor element and the block of source behind the whole widget.
+ *
+ * The destination is matched first; visible text breaks a tie when a block links
+ * the same URL twice. A hit is returned only when exactly one link matches,
+ * because reformatting the wrong row would be worse than the button not showing.
+ */
+export function findRenderedLinkSource(
+	block: string,
+	anchor: { url: string; text: string }
+): MarkdownLinkHit | null {
+	const links = findMarkdownLinks(block);
+	const wantText = collapseSpace(anchor.text);
+
+	let matches = links.filter((link) => link.url === anchor.url);
+	if (matches.length !== 1 && wantText.length > 0) {
+		const pool = matches.length > 0 ? matches : links;
+		const byText = pool.filter((link) => collapseSpace(link.text) === wantText);
+		if (byText.length > 0) matches = byText;
+	}
+	return matches.length === 1 ? matches[0] : null;
+}
+
+function collapseSpace(value: string): string {
+	return value.replace(/\s+/g, " ").trim();
 }
 
 /**

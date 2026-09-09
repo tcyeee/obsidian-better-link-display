@@ -5,11 +5,18 @@ import {
 	DecorationSet,
 	EditorView,
 	Rect,
+	Tooltip,
+	ViewPlugin,
 	closeHoverTooltips,
 	hoverTooltip,
 } from "@codemirror/view";
 import { LOOKUP_TIMEOUT_MS, LookupFailure, LookupOutcome, SiteLookup } from "./lookup";
-import { findExternalLinkAt, toLinkDestination, toLinkText } from "./urlScan";
+import {
+	findExternalLinkAt,
+	findRenderedLinkSource,
+	toLinkDestination,
+	toLinkText,
+} from "./urlScan";
 import { withoutInlineIcon } from "./bookmarkScan";
 import { inVerbatimBlock } from "./verbatim";
 import { t } from "./i18n";
@@ -27,6 +34,37 @@ const FAILURE_HIGHLIGHT_MS = 2500;
 
 /** Failure notices explain a fix, so they need longer than Obsidian's default. */
 const FAILURE_NOTICE_MS = 8000;
+
+/**
+ * The `a.external-link` currently under the pointer in each editor.
+ *
+ * CodeMirror's hover tooltip resolves the pointer to a document offset, but a
+ * link rendered inside a Live Preview widget — a table cell, almost always — has
+ * no offset of its own: the whole widget reports one position at its start. The
+ * anchor element is the only handle on which link is meant, so it is tracked
+ * here for {@link BetterLinkDisplayEditorFeature.widgetLinkTooltip} to read.
+ */
+const hoveredAnchors = new WeakMap<EditorView, HTMLAnchorElement>();
+
+/** Mirrors CodeMirror's own hover listener: `mousemove` on `view.dom`. */
+const anchorTracker = ViewPlugin.define((view) => {
+	let last: EventTarget | null = null;
+	const onMove = (event: MouseEvent) => {
+		if (event.target === last) return;
+		last = event.target;
+		const anchor =
+			event.target instanceof Element ? event.target.closest("a.external-link") : null;
+		if (anchor instanceof HTMLAnchorElement) hoveredAnchors.set(view, anchor);
+		else hoveredAnchors.delete(view);
+	};
+	view.dom.addEventListener("mousemove", onMove);
+	return {
+		destroy() {
+			view.dom.removeEventListener("mousemove", onMove);
+			hoveredAnchors.delete(view);
+		},
+	};
+});
 
 /** Marks the URL that is currently being resolved. */
 const startLoading = StateEffect.define<{ id: number; from: number; to: number }>();
@@ -120,7 +158,7 @@ export class BetterLinkDisplayEditorFeature {
 	private timers = new Set<number>();
 
 	constructor(private readonly lookup: SiteLookup) {
-		this.extension = [pendingField, this.tooltip()];
+		this.extension = [pendingField, anchorTracker, this.tooltip()];
 	}
 
 	/** Cancel the pending failure-highlight timers. */
@@ -165,7 +203,10 @@ export class BetterLinkDisplayEditorFeature {
 				if (inVerbatimBlock(view.state.doc, line.number)) return null;
 
 				const hit = findExternalLinkAt(line.text, pos - line.from);
-				if (!hit) return null;
+				// No offset for the pointer means it is over a widget — a Live
+				// Preview table, in practice — where the link is a rendered anchor
+				// with no position of its own. `pos` is then the widget's start.
+				if (!hit) return this.widgetLinkTooltip(view, pos);
 
 				const from = line.from + hit.from;
 				const to = line.from + hit.to;
@@ -203,12 +244,63 @@ export class BetterLinkDisplayEditorFeature {
 		);
 	}
 
+	/**
+	 * The button for a link the pointer reached through a widget rather than the
+	 * document text — a cell of a Live Preview table. CodeMirror hands over the
+	 * widget's start position, and {@link hoveredAnchors} the anchor actually
+	 * under the pointer; the link's real source range is recovered by scanning
+	 * the block of Markdown the widget stands in for.
+	 */
+	private widgetLinkTooltip(view: EditorView, pos: number): Tooltip | null {
+		const anchor = hoveredAnchors.get(view);
+		if (!anchor || !view.contentDOM.contains(anchor)) return null;
+
+		const block = view.lineBlockAt(pos);
+		const md = view.state.sliceDoc(block.from, block.to);
+		const link = findRenderedLinkSource(md, {
+			url: anchor.getAttribute("href") ?? "",
+			text: anchor.textContent ?? "",
+		});
+		if (!link) return null;
+
+		const from = block.from + link.from;
+		const to = block.from + link.to;
+		if (hasMarkOverlapping(view, from, to)) return null;
+		if (inVerbatimBlock(view.state.doc, view.state.doc.lineAt(from).number)) return null;
+
+		const source = md.slice(link.from, link.to);
+		const url = link.url;
+		// A `|` in the site's title would split the cell it is written into, so it
+		// is escaped on the way in — but only for a real table, never a link that
+		// merely happens to live in some other kind of widget.
+		const escapePipes = anchor.closest("table") !== null;
+
+		return {
+			// The whole widget block, so the button survives the pointer moving
+			// across the table; `getCoords` still pins it to the anchor.
+			pos: block.from,
+			end: block.to,
+			above: true,
+			create: () => {
+				const dom = this.tooltipDom(view, from, to, source, url, escapePipes);
+				return {
+					dom,
+					offset: { x: 0, y: 4 },
+					getCoords: () => anchorRect(anchor, dom),
+					mount: () =>
+						dom.parentElement?.classList.add("better-link-display-tooltip-host"),
+				};
+			},
+		};
+	}
+
 	private tooltipDom(
 		view: EditorView,
 		from: number,
 		to: number,
 		source: string,
-		url: string
+		url: string,
+		escapePipes = false
 	): HTMLElement {
 		const container = createDiv({ cls: "better-link-display-tooltip" });
 		// A link that already carries an inlined icon is a bookmark this plugin
@@ -222,7 +314,7 @@ export class BetterLinkDisplayEditorFeature {
 			view,
 			"bookmark",
 			plain === null ? t("button.format") : t("button.reformat"),
-			() => void this.format(view, from, to, source, url)
+			() => void this.format(view, from, to, source, url, escapePipes)
 		);
 
 		if (plain !== null) {
@@ -279,7 +371,8 @@ export class BetterLinkDisplayEditorFeature {
 		from: number,
 		to: number,
 		source: string,
-		url: string
+		url: string,
+		escapePipes = false
 	): Promise<void> {
 		// The tooltip may have been open across an edit; only act on the exact
 		// text the button was offered for.
@@ -324,8 +417,14 @@ export class BetterLinkDisplayEditorFeature {
 			view.dispatch({ effects: clearMark.of(id) });
 			return;
 		}
+		const bookmark = bookmarkMarkdown(outcome.info, url);
 		view.dispatch({
-			changes: { from: range.from, to: range.to, insert: bookmarkMarkdown(outcome.info, url) },
+			changes: {
+				from: range.from,
+				to: range.to,
+				// A pipe from the site's title would otherwise end the table cell.
+				insert: escapePipes ? bookmark.replace(/\|/g, "\\|") : bookmark,
+			},
 			effects: clearMark.of(id),
 		});
 	}
@@ -410,6 +509,18 @@ function centreOnLink(
 	const half = dom.getBoundingClientRect().width / 2;
 
 	return { top: end.top, bottom: end.bottom, left: centre - half, right: centre + half };
+}
+
+/**
+ * Same idea as {@link centreOnLink}, but for a link inside a widget: there is a
+ * real anchor element to measure, so the button is centred over its box rather
+ * than over document coordinates the widget doesn't expose.
+ */
+function anchorRect(anchor: HTMLElement, dom: HTMLElement): Rect {
+	const rect = anchor.getBoundingClientRect();
+	const centre = (rect.left + rect.right) / 2;
+	const half = dom.getBoundingClientRect().width / 2;
+	return { top: rect.top, bottom: rect.bottom, left: centre - half, right: centre + half };
 }
 
 /**
