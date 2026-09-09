@@ -11,7 +11,7 @@ export function currentLinkName(source: string): string {
 	const hit = wholeLink(source);
 	if (!hit) return "";
 	return hit.text.replace(INLINE_ICON, "").trim()
-		.replace(/\\([\\`*_{}\[\]()#+.!|>~-])/g, "$1")
+		.replace(/\\([\\`*_{}[\]()#+.!|>~-])/g, "$1")
 		.replace(/&#(\d+);|&(amp|lt|gt|quot);/g, (match, code: string, name: string) => {
 			if (code) {
 				const point = Number(code);

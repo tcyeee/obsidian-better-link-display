@@ -21,8 +21,3 @@ export function logWarn(message: string, detail?: unknown): void {
 	if (detail === undefined) console.warn(`${PREFIX} ${message}`);
 	else console.warn(`${PREFIX} ${message}`, detail);
 }
-
-export function logInfo(message: string, detail?: unknown): void {
-	if (detail === undefined) console.info(`${PREFIX} ${message}`);
-	else console.info(`${PREFIX} ${message}`, detail);
-}

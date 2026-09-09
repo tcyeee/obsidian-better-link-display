@@ -1,6 +1,6 @@
 import { requestUrl } from "obsidian";
 import { toInlineIcon } from "./favicon";
-import { logError, logInfo, logWarn } from "./log";
+import { logError, logWarn } from "./log";
 
 export interface SiteInfo {
 	title: string;
@@ -57,8 +57,6 @@ function isSiteInfo(value: unknown): value is { title: string; favicon?: string 
 async function siteInfoRequest(url: string, token: string): Promise<RequestOutcome> {
 	const endpoint = `${API_BASE}/extension/site-info?url=${encodeURIComponent(url)}`;
 
-	logInfo(`site-info request → GET ${endpoint}`);
-
 	let status: number;
 	let body: unknown;
 	try {
@@ -75,8 +73,6 @@ async function siteInfoRequest(url: string, token: string): Promise<RequestOutco
 		logError(`site-info request threw (no response) for ${endpoint}`, error);
 		return { ok: false, failure: "unreachable" };
 	}
-
-	logInfo(`site-info response ← HTTP ${status} for ${endpoint}`, body);
 
 	if (status === 401 || status === 403) {
 		logWarn(`site-info rejected the token: HTTP ${status} for ${endpoint}`, body);
