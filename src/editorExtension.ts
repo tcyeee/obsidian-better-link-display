@@ -275,7 +275,7 @@ export class BetterLinkDisplayEditorFeature {
 			end: found.to,
 			above: false,
 			create: () => {
-				const dom = this.menuDom(view, found.from, found.to, source, found.url);
+				const dom = this.menuDom(view, found.from, found.to, source, found.url, true);
 				this.watchTableMenu(view, dom, anchor);
 				return {
 					dom,
@@ -393,7 +393,8 @@ export class BetterLinkDisplayEditorFeature {
 		from: number,
 		to: number,
 		source: string,
-		url: string
+		url: string,
+		escapePipes = false
 	): HTMLElement {
 		const container = createDiv({
 			cls: "menu better-link-display-menu",
@@ -410,7 +411,7 @@ export class BetterLinkDisplayEditorFeature {
 			view,
 			"bookmark",
 			plain === null ? t("button.format") : t("button.reformat"),
-			() => void this.format(view, from, to, source, url)
+			() => void this.format(view, from, to, source, url, escapePipes)
 		);
 
 		if (plain !== null) {
@@ -471,7 +472,8 @@ export class BetterLinkDisplayEditorFeature {
 		from: number,
 		to: number,
 		source: string,
-		url: string
+		url: string,
+		escapePipes = false
 	): Promise<void> {
 		// The menu may have been open across an edit; only act on the exact
 		// text the item was offered for.
@@ -516,8 +518,14 @@ export class BetterLinkDisplayEditorFeature {
 			view.dispatch({ effects: clearMark.of(id) });
 			return;
 		}
+		const bookmark = bookmarkMarkdown(outcome.info, url);
 		view.dispatch({
-			changes: { from: range.from, to: range.to, insert: bookmarkMarkdown(outcome.info, url) },
+			changes: {
+				from: range.from,
+				to: range.to,
+				// A pipe from the site's title would otherwise end the table cell.
+				insert: escapePipes ? bookmark.replace(/\|/g, "\\|") : bookmark,
+			},
 			effects: clearMark.of(id),
 		});
 	}
