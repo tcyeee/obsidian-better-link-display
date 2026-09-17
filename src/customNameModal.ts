@@ -22,16 +22,17 @@ export class CustomNameModal extends Modal {
 		};
 		const field = new Setting(this.contentEl)
 			.setName(t("customName.label"))
-			.addText((text) => {
+			.addTextArea((text) => {
 				text.setValue(name).setPlaceholder(t("customName.placeholder"));
 				text.inputEl.setAttribute("aria-label", t("customName.label"));
 				text.inputEl.addClass("better-link-display-wide-input");
+				text.inputEl.rows = 3;
 				text.onChange((value) => {
 					name = value;
 					saveButton.setDisabled(!name.trim());
 				});
 				text.inputEl.addEventListener("keydown", (event) => {
-					if (event.key === "Enter" && !event.isComposing) {
+					if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && !event.isComposing) {
 						event.preventDefault();
 						submit();
 					}
@@ -44,7 +45,7 @@ export class CustomNameModal extends Modal {
 			saveButton = button;
 			button.setButtonText(t("button.save")).setCta().setDisabled(!name.trim()).onClick(submit);
 		});
-		const input = field.controlEl.querySelector("input");
+		const input = field.controlEl.querySelector("textarea");
 		input?.focus();
 		input?.select();
 	}
