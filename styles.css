@@ -345,3 +345,65 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
 	text-decoration: none;
 	background-color: var(--background-modifier-error);
 }
+
+/*
+ * The `link-grid` code block: one tile per link, as a grid that reflows with
+ * the note pane's width instead of overflowing it. `auto-fill` rather than a
+ * fixed column count, so a pane half the width of another still gets tiles
+ * sized the same as everywhere else, just fewer per row.
+ */
+.better-link-display-app-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+	gap: var(--size-4-3);
+	margin: var(--size-4-2) 0;
+}
+
+/*
+ * Icon above name, centred, reading as one app tile rather than a line of
+ * text with a picture in front of it — the shape the feature is modelled on.
+ * Obsidian's external-link styling (trailing arrow background image and the
+ * padding reserved for it) is removed the same way `better-link-display-bookmark`
+ * removes it, since neither reads as an "app" icon.
+ */
+a.external-link.better-link-display-app-tile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-4-1);
+	padding: var(--size-4-2);
+	border-radius: var(--radius-m);
+	color: var(--text-normal);
+	text-decoration: none;
+	background-image: none;
+	text-align: center;
+}
+
+a.external-link.better-link-display-app-tile:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* Cropped from the same 48px cached/inlined source the single-link bookmark uses. */
+.better-link-display-app-tile img {
+	width: 32px;
+	height: 32px;
+	max-width: 32px;
+	max-height: 32px;
+	border-radius: var(--radius-s);
+	object-fit: contain;
+}
+
+/* One line, ellipsised rather than wrapped — a wrapped title would misalign tiles in the same row. */
+.better-link-display-app-tile-label {
+	max-width: 100%;
+	overflow: hidden;
+	font-size: var(--font-text-size);
+	line-height: var(--line-height-normal);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* While a tile's icon or title lookup is still in flight. */
+.better-link-display-app-tile-pending {
+	opacity: 0.6;
+}
