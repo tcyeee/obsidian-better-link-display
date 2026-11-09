@@ -1,4 +1,4 @@
-import { fetchSiteInfo, fetchSiteTitleAndIconSrc, SiteInfo, SiteTitleAndIconSrc, verifyToken } from "./api";
+import { fetchSiteAppInfo, fetchSiteInfo, SiteAppInfo, SiteInfo, verifyToken } from "./api";
 import { logWarn } from "./log";
 
 /**
@@ -25,8 +25,8 @@ export type LookupFailure =
 
 export type LookupOutcome = { ok: true; info: SiteInfo } | { ok: false; reason: LookupFailure };
 
-export type TitleAndIconSrcOutcome =
-	| { ok: true; info: SiteTitleAndIconSrc }
+export type AppInfoOutcome =
+	| { ok: true; info: SiteAppInfo }
 	| { ok: false; reason: LookupFailure };
 
 export type VerifyOutcome =
@@ -67,21 +67,21 @@ export class SiteLookup {
 
 	/**
 	 * Same as {@link resolve}, but for a caller (the app-grid code block) that
-	 * wants the title and the favicon's raw signed-URL separately, so it can
-	 * check its own icon cache before deciding whether to spend a download on
-	 * it. Goes through the same queue, so a grid with many links can't burst
+	 * wants the app name and the big icon's raw signed-URL separately, so it
+	 * can check its own icon cache before deciding whether to spend a download
+	 * on it. Goes through the same queue, so a grid with many links can't burst
 	 * past the service's rate limit either.
 	 */
-	async resolveTitleAndIconSrc(url: string): Promise<TitleAndIconSrcOutcome> {
+	async resolveAppInfo(url: string): Promise<AppInfoOutcome> {
 		const { accessToken } = this.getConfig();
 		if (!accessToken) {
 			logWarn(`lookup for ${url} skipped: no access token configured`);
 			return { ok: false, reason: "unconfigured" };
 		}
 
-		const outcome = await this.withTimeout<TitleAndIconSrcOutcome>(
-			async (): Promise<TitleAndIconSrcOutcome> => {
-				const result = await fetchSiteTitleAndIconSrc(url, accessToken);
+		const outcome = await this.withTimeout<AppInfoOutcome>(
+			async (): Promise<AppInfoOutcome> => {
+				const result = await fetchSiteAppInfo(url, accessToken);
 				return result.ok
 					? { ok: true, info: result.info }
 					: { ok: false, reason: result.failure };

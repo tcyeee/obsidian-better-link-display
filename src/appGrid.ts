@@ -23,8 +23,9 @@ class AppGridRenderChild extends MarkdownRenderChild {
 }
 
 /**
- * Renders a `link-grid` code block: one tile per URL, favicon as the app icon
- * and site title as the app name. Registered as a Markdown code-block
+ * Renders a `link-grid` code block: one tile per URL, the site's big icon
+ * (`logo`, falling back to `favicon`) as the app icon and its short app name
+ * (`appName`, falling back to `title`) as the label. Registered as a Markdown code-block
  * processor, so it covers Reading view directly; Obsidian's Live Preview
  * renders any registered code-block language the same way once the cursor
  * leaves the block, with no separate CodeMirror widget needed on this side.
@@ -98,7 +99,7 @@ function buildAddTile(grid: HTMLElement, trailing: boolean, onAdd: () => void): 
  * `getSectionInfo` on the same `el` the processor was given (a child element
  * won't resolve). The rewrite is all this does: Live Preview re-renders the
  * block from the changed document the same way it would for an edit typed by
- * hand, which is what gives the new tile its pending favicon/title and, once
+ * hand, which is what gives the new tile its pending icon/app name and, once
  * the lookup answers, the real ones — see {@link resolveTile}.
  */
 function openAddModal(app: App, ctx: MarkdownPostProcessorContext, el: HTMLElement): void {
@@ -142,29 +143,29 @@ async function resolveTile(
 	cache: AppGridCache,
 	child: AppGridRenderChild
 ): Promise<void> {
-	const [cachedIconPath, cachedTitle] = await Promise.all([
+	const [cachedIconPath, cachedAppName] = await Promise.all([
 		cache.getIconResourcePath(url),
-		cache.getTitle(url),
+		cache.getAppName(url),
 	]);
 	if (child.cancelled) return;
 
 	if (cachedIconPath) tile.icon.src = cachedIconPath;
-	if (cachedTitle) tile.label.setText(cachedTitle);
+	if (cachedAppName) tile.label.setText(cachedAppName);
 
-	if (cachedIconPath && cachedTitle) {
+	if (cachedIconPath && cachedAppName) {
 		tile.anchor.removeClass(TILE_PENDING_CLASS);
 		return;
 	}
 
-	const outcome = await lookup.resolveTitleAndIconSrc(url);
+	const outcome = await lookup.resolveAppInfo(url);
 	if (child.cancelled) return;
 
 	// A failed lookup keeps whatever placeholder or cached value the tile
-	// already has — a missing title or icon is still worth showing a link for.
+	// already has — a missing app name or icon is still worth showing a link for.
 	if (outcome.ok) {
-		if (!cachedTitle) {
-			tile.label.setText(outcome.info.title);
-			void cache.setTitle(url, outcome.info.title);
+		if (!cachedAppName) {
+			tile.label.setText(outcome.info.appName);
+			void cache.setAppName(url, outcome.info.appName);
 		}
 
 		if (!cachedIconPath) {

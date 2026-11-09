@@ -1,24 +1,30 @@
 import { DataAdapter, normalizePath } from "obsidian";
 import { logWarn } from "./log";
 
-const ICONS_SUBDIR = "icons";
-const TITLES_FILE = "titles.json";
+/**
+ * Named apart from any earlier cache generation (favicon-keyed icons, full
+ * page titles): both hold one small PNG per hostname with no expiry, so a
+ * same-named directory would otherwise go on serving a stale favicon forever
+ * under the new logo-based meaning instead of triggering a fresh fetch.
+ */
+const ICONS_SUBDIR = "logos";
+const APP_NAMES_FILE = "app-names.json";
 
 /** Long enough to collapse a 20-link grid's first render into one write. */
-const TITLES_SAVE_DEBOUNCE_MS = 500;
+const APP_NAMES_SAVE_DEBOUNCE_MS = 500;
 
 /**
- * Icons are cached per hostname — the service re-signs the same favicon on
+ * Icons are cached per hostname — the service re-signs the same big icon on
  * every request, so caching lets a tile skip the download+re-encode on every
- * note open rather than skip the request outright. Titles are cached per full
- * URL, since two pages on one hostname don't share a title. No expiry and no
+ * note open rather than skip the request outright. App names are cached per
+ * full URL, since two pages on one hostname don't share one. No expiry and no
  * size cap, by design: the user clears this by hand from settings, and the
  * icon side is bounded anyway by one small PNG per distinct hostname ever
  * seen, not per link.
  */
 export class AppGridCache {
-	private titles: Record<string, string> | null = null;
-	private titlesSaveTimer = 0;
+	private appNames: Record<string, string> | null = null;
+	private appNamesSaveTimer = 0;
 
 	constructor(
 		private readonly adapter: DataAdapter,
@@ -41,16 +47,16 @@ export class AppGridCache {
 		await this.adapter.writeBinary(this.iconPath(hostname), bytes);
 	}
 
-	async getTitle(url: string): Promise<string | null> {
-		const titles = await this.loadTitles();
-		return titles[url] ?? null;
+	async getAppName(url: string): Promise<string | null> {
+		const appNames = await this.loadAppNames();
+		return appNames[url] ?? null;
 	}
 
 	/** Queues a debounced write rather than writing on every call — see the class doc. */
-	async setTitle(url: string, title: string): Promise<void> {
-		const titles = await this.loadTitles();
-		titles[url] = title;
-		this.queueTitlesSave();
+	async setAppName(url: string, appName: string): Promise<void> {
+		const appNames = await this.loadAppNames();
+		appNames[url] = appName;
+		this.queueAppNamesSave();
 	}
 
 	/** Total bytes on disk, walked fresh each call — meant for an occasional settings-tab read, not a hot path. */
@@ -60,11 +66,11 @@ export class AppGridCache {
 		return this.sizeOf(dir);
 	}
 
-	/** Cancels any pending title save and deletes the whole cache directory. */
+	/** Cancels any pending app-name save and deletes the whole cache directory. */
 	async clear(): Promise<void> {
-		window.clearTimeout(this.titlesSaveTimer);
-		this.titlesSaveTimer = 0;
-		this.titles = null;
+		window.clearTimeout(this.appNamesSaveTimer);
+		this.appNamesSaveTimer = 0;
+		this.appNames = null;
 		const dir = this.getCacheDir();
 		if (await this.adapter.exists(dir)) await this.adapter.rmdir(dir, true);
 	}
@@ -73,45 +79,45 @@ export class AppGridCache {
 		return normalizePath(`${this.getCacheDir()}/${ICONS_SUBDIR}`);
 	}
 
-	private titlesPath(): string {
-		return normalizePath(`${this.getCacheDir()}/${TITLES_FILE}`);
+	private appNamesPath(): string {
+		return normalizePath(`${this.getCacheDir()}/${APP_NAMES_FILE}`);
 	}
 
 	private iconPath(hostname: string): string {
 		return normalizePath(`${this.iconsDir()}/${sanitizeHostname(hostname)}.png`);
 	}
 
-	private async loadTitles(): Promise<Record<string, string>> {
-		if (this.titles) return this.titles;
+	private async loadAppNames(): Promise<Record<string, string>> {
+		if (this.appNames) return this.appNames;
 
-		const path = this.titlesPath();
+		const path = this.appNamesPath();
 		if (await this.adapter.exists(path)) {
 			try {
 				const parsed = JSON.parse(await this.adapter.read(path));
-				this.titles = isTitleMap(parsed) ? parsed : {};
+				this.appNames = isAppNameMap(parsed) ? parsed : {};
 			} catch (error) {
-				logWarn("app-grid: titles.json could not be parsed — starting fresh", error);
-				this.titles = {};
+				logWarn(`app-grid: ${APP_NAMES_FILE} could not be parsed — starting fresh`, error);
+				this.appNames = {};
 			}
 		} else {
-			this.titles = {};
+			this.appNames = {};
 		}
-		return this.titles;
+		return this.appNames;
 	}
 
-	private queueTitlesSave(): void {
-		window.clearTimeout(this.titlesSaveTimer);
-		this.titlesSaveTimer = window.setTimeout(() => {
-			this.titlesSaveTimer = 0;
-			void this.saveTitles();
-		}, TITLES_SAVE_DEBOUNCE_MS);
+	private queueAppNamesSave(): void {
+		window.clearTimeout(this.appNamesSaveTimer);
+		this.appNamesSaveTimer = window.setTimeout(() => {
+			this.appNamesSaveTimer = 0;
+			void this.saveAppNames();
+		}, APP_NAMES_SAVE_DEBOUNCE_MS);
 	}
 
-	private async saveTitles(): Promise<void> {
-		if (!this.titles) return;
+	private async saveAppNames(): Promise<void> {
+		if (!this.appNames) return;
 		const dir = this.getCacheDir();
 		if (!(await this.adapter.exists(dir))) await this.adapter.mkdir(dir);
-		await this.adapter.write(this.titlesPath(), JSON.stringify(this.titles));
+		await this.adapter.write(this.appNamesPath(), JSON.stringify(this.appNames));
 	}
 
 	private async sizeOf(dir: string): Promise<number> {
@@ -136,7 +142,7 @@ function sanitizeHostname(hostname: string): string {
 	return hostname.replace(/[^a-z0-9.-]/g, "_");
 }
 
-function isTitleMap(value: unknown): value is Record<string, string> {
+function isAppNameMap(value: unknown): value is Record<string, string> {
 	return (
 		!!value &&
 		typeof value === "object" &&
