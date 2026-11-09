@@ -95,7 +95,6 @@ const en = {
 	"appGrid.menu.delete": "Delete app",
 	"appGrid.editName.label": "App name",
 	"appGrid.config.aria": "Configure app grid appearance",
-	"appGrid.config.title": "App grid appearance",
 	"appGrid.config.iconSize": "Icon size",
 	"appGrid.config.gap": "Spacing",
 	"appGrid.config.size.s": "Small",
@@ -105,9 +104,8 @@ const en = {
 	"appGrid.config.background.none": "None",
 	"appGrid.config.background.gray": "Light grey",
 	"appGrid.config.background.beige": "Light dusty rose",
+	"appGrid.config.appearance": "Appearance",
 	"appGrid.config.appBackground": "App background",
-	"appGrid.config.appBackground.desc":
-		"Tint each app tile with a lightened version of its own icon's main colour.",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -186,7 +184,6 @@ const zh: Record<TranslationKey, string> = {
 	"appGrid.menu.delete": "删除APP",
 	"appGrid.editName.label": "应用名称",
 	"appGrid.config.aria": "设置应用宫格样式",
-	"appGrid.config.title": "应用宫格样式",
 	"appGrid.config.iconSize": "图标大小",
 	"appGrid.config.gap": "间距",
 	"appGrid.config.size.s": "小",
@@ -196,8 +193,8 @@ const zh: Record<TranslationKey, string> = {
 	"appGrid.config.background.none": "无",
 	"appGrid.config.background.gray": "浅灰色",
 	"appGrid.config.background.beige": "浅豆沙色",
+	"appGrid.config.appearance": "外观",
 	"appGrid.config.appBackground": "APP背景颜色",
-	"appGrid.config.appBackground.desc": "根据图标主题色变淡后，作为每个应用图标的背景颜色。",
 };
 
 const TABLES: Record<Language, Record<TranslationKey, string>> = { en, zh };

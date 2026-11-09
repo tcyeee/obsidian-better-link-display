@@ -216,9 +216,8 @@ a.external-link > img[src^="data:image/"] {
  */
 body.better-link-display-background a.external-link.better-link-display-bookmark,
 body.better-link-display-background .cm-editor .better-link-display-plate {
-	background-color: var(--background-secondary);
 	border-radius: var(--radius-s);
-	padding-block: 1px 4px;
+	padding-block: 10px 4px;
 	padding-inline: 5px;
 }
 
@@ -347,6 +346,20 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
 }
 
 /*
+ * Live Preview only: Obsidian wraps a registered code block's widget in
+ * `.cm-embed-block.cm-lang-link-grid` and, on hover, clips it to
+ * `var(--radius-s)` (core app.css) — smaller than the tile's own
+ * `var(--radius-m)` below, so an edge tile's corner visibly shrinks on
+ * hover where Reading view (no such wrapper) never does. Matching Obsidian's
+ * own selector's five class-level steps is what wins the tie, since neither
+ * `!important` nor `:has()` is available to force it; the plugin's CSS
+ * loading after core `app.css` settles equal specificity in our favour.
+ */
+.markdown-source-view.mod-cm6 .cm-embed-block.cm-lang-link-grid:hover {
+	border-radius: var(--radius-m);
+}
+
+/*
  * The `link-grid` code block: one tile per link, as a grid that reflows with
  * the note pane's width instead of overflowing it. `auto-fill` rather than a
  * fixed column count, so a pane half the width of another still gets tiles
@@ -404,6 +417,16 @@ a.external-link.better-link-display-app-tile:hover {
  * canvas) never shows a stale or missing custom property as a visible gap.
  */
 .better-link-display-app-tile-autobg {
+	background-color: var(--better-link-display-app-tile-bg, transparent);
+}
+
+/*
+ * Live Preview only: an autobg tile already carries its own sampled tint, so
+ * the generic hover highlight above would just paint over it on every pass of
+ * the pointer. Reading view keeps the plain hover feedback — there the tile is
+ * only ever a link to follow, with nothing of its own to protect.
+ */
+.cm-editor a.external-link.better-link-display-app-tile.better-link-display-app-tile-autobg:hover {
 	background-color: var(--better-link-display-app-tile-bg, transparent);
 }
 
@@ -576,4 +599,220 @@ a.external-link.better-link-display-app-tile:hover {
 	height: 1px;
 	margin: 4px 6px;
 	background-color: var(--background-modifier-border);
+}
+
+/*
+ * The app grid's appearance panel — see `appGridConfigPanel.ts`. Mounted to
+ * `document.body` like the context menu above (so an ancestor's `overflow`/
+ * `transform` can't clip it), but positioned under the gear button rather
+ * than the click point: `top`/`right` come from the button's own
+ * `getBoundingClientRect()`. A bigger corner radius and the same shadow as
+ * the context menu reads as "the same floating-surface language, a calmer
+ * variant of it" rather than an unrelated control. `z-index` sits one layer
+ * below the context menu's `--layer-menu` so the two can never fight over
+ * which one is on top if a tile's right-click menu is ever opened while this
+ * is up.
+ */
+.better-link-display-app-config-panel {
+	position: fixed;
+	top: var(--better-link-display-app-config-panel-top, 0);
+	right: var(--better-link-display-app-config-panel-right, 0);
+	z-index: calc(var(--layer-menu) - 1);
+	display: flex;
+	flex-direction: column;
+	gap: 22px;
+	width: max-content;
+	padding: 20px 20px 18px 20px;
+	border-radius: 16px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-size: 15px;
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.13);
+}
+
+.better-link-display-app-config-panel-section {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+/* Small-caps-style group heading — the one thing this panel has that the context menu doesn't, since that one groups with a separator instead. */
+.better-link-display-app-config-panel-section-title {
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--text-faint, var(--text-muted));
+	white-space: nowrap;
+}
+
+/*
+ * Shared skeleton for every segmented control in this panel (icon size, gap,
+ * area background): a pill track, a sliding highlight absolutely positioned
+ * inside it, and the native radios drawn on top. Each control still gets its
+ * own copy below rather than reusing one shared class — see the comment on
+ * `buildSegmentGroup` in `appGridConfigPanel.ts` for why.
+ */
+.better-link-display-app-config-panel-icon-size-group,
+.better-link-display-app-config-panel-gap-group,
+.better-link-display-app-config-panel-background-group {
+	position: relative;
+	/* Grid rather than flex: three `1fr` tracks stay equal-width regardless of
+	 * each label's own text length, which a flex `1 1 0` share would not once
+	 * nowrap text removes the slack that equalised them — the slider below
+	 * depends on this to land exactly under whichever option is selected. */
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	align-items: center;
+	width: 100%;
+	height: 40px;
+	padding: 3px;
+	border-radius: 12px;
+	background: var(--background-secondary, rgba(240, 242, 247, 0.9));
+}
+
+.better-link-display-app-config-panel-icon-size-slider,
+.better-link-display-app-config-panel-gap-slider,
+.better-link-display-app-config-panel-background-slider {
+	position: absolute;
+	top: 3px;
+	bottom: 3px;
+	left: 3px;
+	width: calc((100% - 6px) / 3);
+	border-radius: 9px;
+	background: var(--interactive-accent, #5677c0);
+	box-shadow: 0 0 0 1px rgba(40, 90, 180, 0.35);
+	transition: transform 0.18s ease;
+	/* Purely visual — the radios underneath still take the click. */
+	pointer-events: none;
+}
+
+/* Three equal shares — `translateX(N * 100%)` moves by the highlight's own width, so it doesn't need the track's pixel width to stay in step with it. */
+.better-link-display-app-config-panel-icon-size-group[data-icon-size="s"] .better-link-display-app-config-panel-icon-size-slider,
+.better-link-display-app-config-panel-gap-group[data-gap="s"] .better-link-display-app-config-panel-gap-slider,
+.better-link-display-app-config-panel-background-group[data-background="none"] .better-link-display-app-config-panel-background-slider {
+	transform: translateX(0%);
+}
+
+.better-link-display-app-config-panel-icon-size-group[data-icon-size="m"] .better-link-display-app-config-panel-icon-size-slider,
+.better-link-display-app-config-panel-gap-group[data-gap="m"] .better-link-display-app-config-panel-gap-slider,
+.better-link-display-app-config-panel-background-group[data-background="gray"] .better-link-display-app-config-panel-background-slider {
+	transform: translateX(100%);
+}
+
+.better-link-display-app-config-panel-icon-size-group[data-icon-size="l"] .better-link-display-app-config-panel-icon-size-slider,
+.better-link-display-app-config-panel-gap-group[data-gap="l"] .better-link-display-app-config-panel-gap-slider,
+.better-link-display-app-config-panel-background-group[data-background="beige"] .better-link-display-app-config-panel-background-slider {
+	transform: translateX(200%);
+}
+
+.better-link-display-app-config-panel-icon-size-radio,
+.better-link-display-app-config-panel-gap-radio,
+.better-link-display-app-config-panel-background-radio {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	height: 100%;
+	/* Above the sliding highlight, or its own `pointer-events: none` would be the only thing still letting clicks through. */
+	z-index: 1;
+	font-size: 13px;
+	font-weight: 500;
+	color: var(--text-muted);
+	white-space: nowrap;
+	cursor: pointer;
+}
+
+.better-link-display-app-config-panel-icon-size-radio-input,
+.better-link-display-app-config-panel-gap-radio-input,
+.better-link-display-app-config-panel-background-radio-input {
+	position: absolute;
+	width: 0;
+	height: 0;
+	opacity: 0;
+	pointer-events: none;
+}
+
+/*
+ * The input has to come immediately before its text span in the DOM for this
+ * adjacent-sibling selector to reach it — see `buildSegmentGroup`.
+ */
+.better-link-display-app-config-panel-icon-size-radio-input:checked + .better-link-display-app-config-panel-icon-size-radio-text,
+.better-link-display-app-config-panel-gap-radio-input:checked + .better-link-display-app-config-panel-gap-radio-text,
+.better-link-display-app-config-panel-background-radio-input:checked + .better-link-display-app-config-panel-background-radio-text {
+	color: var(--text-on-accent, #ffffff);
+	font-weight: 600;
+}
+
+/* Label + toggle, two ends of the same row — the panel's second visual difference from the context menu, whose items are icon-then-label and left-aligned throughout. */
+.better-link-display-app-config-panel-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	cursor: pointer;
+}
+
+.better-link-display-app-config-panel-row-text {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+}
+
+.better-link-display-app-config-panel-row-label {
+	font-size: 14px;
+	color: var(--text-normal);
+	white-space: nowrap;
+}
+
+.better-link-display-app-config-panel-row-desc {
+	font-size: 12px;
+	color: var(--text-muted);
+}
+
+.better-link-display-app-config-panel-switch {
+	position: relative;
+	flex-shrink: 0;
+	width: 40px;
+	height: 22px;
+}
+
+.better-link-display-app-config-panel-switch-input {
+	position: absolute;
+	inset: 0;
+	margin: 0;
+	opacity: 0;
+	cursor: pointer;
+}
+
+.better-link-display-app-config-panel-switch-track {
+	position: absolute;
+	inset: 0;
+	border-radius: 999px;
+	background: var(--background-modifier-border-hover, rgba(210, 214, 222, 0.9));
+	box-shadow: 0 0 0 1px rgba(160, 170, 190, 0.5) inset;
+	transition: background 0.18s ease;
+}
+
+.better-link-display-app-config-panel-switch-track::before {
+	content: "";
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 18px;
+	height: 18px;
+	border-radius: 999px;
+	background: var(--toggle-thumb-color, #ffffff);
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+	transition: transform 0.18s ease;
+}
+
+.better-link-display-app-config-panel-switch-input:checked + .better-link-display-app-config-panel-switch-track {
+	background: var(--interactive-accent, #5677c0);
+	box-shadow: 0 0 0 1px rgba(40, 90, 180, 0.35);
+}
+
+/* Fixed 18px, not a percentage — the thumb's travel is the track's own width minus its diameter and padding (40 - 18 - 2 * 2), not a share of equally-sized options like the segmented sliders above. */
+.better-link-display-app-config-panel-switch-input:checked + .better-link-display-app-config-panel-switch-track::before {
+	transform: translateX(18px);
 }
