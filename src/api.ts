@@ -43,11 +43,18 @@ type RequestOutcome =
 	| { ok: true; payload: Payload }
 	| { ok: false; failure: Exclude<FetchFailure, "unresolved"> };
 
-function isSiteInfo(value: unknown): value is { title: string; favicon?: string | null } {
+function isSiteInfo(value: unknown): value is {
+	title: string;
+	favicon?: string | null;
+	logo?: string | null;
+	appName?: string | null;
+} {
 	if (!value || typeof value !== "object") return false;
-	const candidate = value as Partial<SiteInfo>;
+	const candidate = value as Partial<SiteInfo> & { logo?: unknown; appName?: unknown };
 	return typeof candidate.title === "string" &&
-		(candidate.favicon == null || typeof candidate.favicon === "string");
+		(candidate.favicon == null || typeof candidate.favicon === "string") &&
+		(candidate.logo == null || typeof candidate.logo === "string") &&
+		(candidate.appName == null || typeof candidate.appName === "string");
 }
 
 /**
@@ -114,26 +121,26 @@ export async function fetchSiteInfo(url: string, token: string): Promise<FetchRe
 	return { ok: false, failure: "unresolved" };
 }
 
-export interface SiteTitleAndIconSrc {
-	title: string;
-	/** The service's short-lived signed CDN link, undownloaded — "" if it has none. */
+export interface SiteAppInfo {
+	/** Short app/site name (`appName`, server-side falls back to `title` if the page has no manifest `short_name`). */
+	appName: string;
+	/** The service's short-lived signed CDN link to the big icon (`logo`, falling back to `favicon`), undownloaded — "" if it has neither. */
 	iconSrc: string;
 }
 
-export type FetchTitleAndIconSrcResult =
-	| { ok: true; info: SiteTitleAndIconSrc }
+export type FetchAppInfoResult =
+	| { ok: true; info: SiteAppInfo }
 	| { ok: false; failure: FetchFailure };
 
 /**
- * Same request as {@link fetchSiteInfo}, but stops short of downloading and
- * re-encoding the favicon — a caller that may already have that domain's icon
- * cached on disk needs to decide *before* spending a download on it, which
- * {@link fetchSiteInfo} (committed to always inlining one) does not allow.
+ * Same request as {@link fetchSiteInfo}, but for the big-icon/app-name scenario
+ * (`logo` + `appName` rather than `favicon` + `title`), and stopping short of
+ * downloading and re-encoding the icon — a caller that may already have that
+ * domain's icon cached on disk needs to decide *before* spending a download on
+ * it, which {@link fetchSiteInfo} (committed to always inlining one) does not
+ * allow.
  */
-export async function fetchSiteTitleAndIconSrc(
-	url: string,
-	token: string
-): Promise<FetchTitleAndIconSrcResult> {
+export async function fetchSiteAppInfo(url: string, token: string): Promise<FetchAppInfoResult> {
 	const outcome = await siteInfoRequest(url, token);
 	if (!outcome.ok) return outcome;
 
@@ -141,7 +148,10 @@ export async function fetchSiteTitleAndIconSrc(
 	if (payload.ok === true && isSiteInfo(payload.data)) {
 		return {
 			ok: true,
-			info: { title: payload.data.title, iconSrc: payload.data.favicon ?? "" },
+			info: {
+				appName: payload.data.appName ?? payload.data.title,
+				iconSrc: payload.data.logo ?? payload.data.favicon ?? "",
+			},
 		};
 	}
 
