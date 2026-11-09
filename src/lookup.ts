@@ -1,5 +1,6 @@
-import { fetchSiteAppInfo, fetchSiteInfo, SiteAppInfo, SiteInfo, verifyToken } from "./api";
+import { API_BASE, fetchSiteAppInfo, fetchSiteInfo, SiteAppInfo, SiteInfo, verifyToken } from "./api";
 import { logWarn } from "./log";
+import { t } from "./i18n";
 
 /**
  * The service documents a ~300ms rate limit per token. Requests are issued one
@@ -28,6 +29,30 @@ export type LookupOutcome = { ok: true; info: SiteInfo } | { ok: false; reason: 
 export type AppInfoOutcome =
 	| { ok: true; info: SiteAppInfo }
 	| { ok: false; reason: LookupFailure };
+
+/**
+ * These read very differently on purpose: "the service is down" and "the
+ * service says this page doesn't resolve" need completely different actions
+ * from the user, and a single generic message hides which one happened.
+ * Shared between the editor's hover menu and the app-grid context menu —
+ * both surface the same `LookupFailure` reasons to the user.
+ */
+export function lookupFailureMessage(reason: LookupFailure): string {
+	switch (reason) {
+		case "unconfigured":
+			return t("failure.unconfigured");
+		case "auth":
+			return t("failure.auth");
+		case "unreachable":
+			return t("failure.unreachable", { base: API_BASE });
+		case "server":
+			return t("failure.server", { base: API_BASE });
+		case "unresolved":
+			return t("failure.unresolved");
+		case "timeout":
+			return t("failure.timeout", { seconds: LOOKUP_TIMEOUT_MS / 1000 });
+	}
+}
 
 export type VerifyOutcome =
 	| { ok: true }

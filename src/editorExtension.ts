@@ -11,13 +11,12 @@ import {
 	hoverTooltip,
 	showTooltip,
 } from "@codemirror/view";
-import { LOOKUP_TIMEOUT_MS, LookupFailure, LookupOutcome, SiteLookup } from "./lookup";
+import { LookupFailure, LookupOutcome, lookupFailureMessage, SiteLookup } from "./lookup";
 import { findExternalLinkAt, toLinkDestination, toLinkText } from "./urlScan";
 import { withoutInlineIcon } from "./bookmarkScan";
 import { isDelimiterRow, isTableRow, rowCells } from "./tableScan";
 import { inVerbatimBlock } from "./verbatim";
 import { t } from "./i18n";
-import { API_BASE } from "./api";
 import { logError, logWarn } from "./log";
 import { fallbackIcon } from "./favicon";
 import { currentLinkName, withCustomName } from "./customName";
@@ -580,7 +579,7 @@ export class BetterLinkDisplayEditorFeature {
 		}, FAILURE_HIGHLIGHT_MS);
 		this.timers.add(timer);
 
-		new Notice(this.failureMessage(reason), FAILURE_NOTICE_MS);
+		new Notice(lookupFailureMessage(reason), FAILURE_NOTICE_MS);
 	}
 
 	/**
@@ -595,28 +594,6 @@ export class BetterLinkDisplayEditorFeature {
 			view.dispatch({ effects: clearMark.of(id) });
 		} catch {
 			// View destroyed; the mark went with its state.
-		}
-	}
-
-	/**
-	 * These read very differently on purpose: "the service is down" and "the
-	 * service says this page doesn't resolve" need completely different actions
-	 * from the user, and a single generic message hides which one happened.
-	 */
-	private failureMessage(reason: LookupFailure): string {
-		switch (reason) {
-			case "unconfigured":
-				return t("failure.unconfigured");
-			case "auth":
-				return t("failure.auth");
-			case "unreachable":
-				return t("failure.unreachable", { base: API_BASE });
-			case "server":
-				return t("failure.server", { base: API_BASE });
-			case "unresolved":
-				return t("failure.unresolved");
-			case "timeout":
-				return t("failure.timeout", { seconds: LOOKUP_TIMEOUT_MS / 1000 });
 		}
 	}
 }
