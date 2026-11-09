@@ -1,6 +1,6 @@
 import { requestUrl } from "obsidian";
 import { toInlineIcon } from "./favicon";
-import { logError, logWarn } from "./log";
+import { logError, logInfo, logWarn } from "./log";
 
 export interface SiteInfo {
 	title: string;
@@ -63,6 +63,7 @@ function isSiteInfo(value: unknown): value is {
  */
 async function siteInfoRequest(url: string, token: string): Promise<RequestOutcome> {
 	const endpoint = `${API_BASE}/extension/site-info?url=${encodeURIComponent(url)}`;
+	logInfo(`requesting ${endpoint}`);
 
 	let status: number;
 	let body: unknown;
