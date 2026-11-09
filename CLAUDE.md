@@ -5,18 +5,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npm run dev                          # esbuild watch → main.js (inline sourcemap)
-npm run build                        # tsc -noEmit -skipLibCheck, then production bundle
-npm test                             # node:test via tsx over src/**/*.test.ts
-npx tsx --test src/urlScan.test.ts   # one test file
-npx tsx --test --test-name-pattern "bare external URL" "src/**/*.test.ts"
+pnpm dev                              # esbuild watch → main.js (inline sourcemap)
+pnpm build                            # tsc -noEmit -skipLibCheck, then production bundle
+pnpm test                             # node:test via tsx over src/**/*.test.ts
+pnpm exec tsx --test src/urlScan.test.ts   # one test file
+pnpm exec tsx --test --test-name-pattern "bare external URL" "src/**/*.test.ts"
 ```
 
 Only the pure-string modules (`src/urlScan.ts`, `src/verbatim.ts`, `src/bookmarkScan.ts`, `src/tableScan.ts`) have tests — they import nothing from `obsidian`, which is what makes them runnable outside the app. Keep new text/parsing logic there rather than inline in the editor extension so it stays testable.
 
 To try a build inside a vault, the `/obsidian-dev` skill builds and copies `main.js` + `manifest.json` + `styles.css` into a local vault.
 
-Releases: `npm version <x.y.z>` runs `version-bump.mjs` (syncs `manifest.json` + `versions.json`), then pushing an **annotated** tag triggers `.github/workflows/release.yml`, which uses the tag's annotation as the release notes and attaches the three plugin files.
+Releases: `pnpm version <x.y.z>` runs `version-bump.mjs` (syncs `manifest.json` + `versions.json`), then pushing an **annotated** tag triggers `.github/workflows/release.yml`, which uses the tag's annotation as the release notes and attaches the three plugin files.
 
 ## Architecture
 
