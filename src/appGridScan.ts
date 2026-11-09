@@ -3,35 +3,92 @@
  * can be exercised without an editor or a rendered DOM — see appGridScan.test.ts.
  */
 
+import { findMarkdownLinks } from "./urlScan";
+
 const HTTP_URL = /^https?:\/\//i;
 
-/**
- * One URL per line. Blank lines and anything that doesn't start like a URL are
- * dropped rather than rejected, so a block that's being hand-edited never shows
- * an error for a half-typed or commented-out line. Duplicates are kept as-is —
- * a tile per line, in the order written.
- */
-export function parseAppGridSource(source: string): string[] {
-	return source
-		.split("\n")
-		.map((line) => line.trim())
-		.filter((line) => HTTP_URL.test(line));
+export interface AppGridEntry {
+	url: string;
+	/**
+	 * The title written directly into this line as `[Name](url)` — the "Edit
+	 * name" dialog's save path, see `setAppGridEntryName` — or `null` for a
+	 * bare-URL line that carries none, which keeps falling back to the cached
+	 * or looked-up site name the way it always has.
+	 */
+	name: string | null;
 }
 
 /**
- * Removes the `index`-th URL line (0-based, in the order {@link parseAppGridSource}
+ * One entry per line: a bare URL, or a `[Name](url)` link carrying the name
+ * the user gave it. Blank lines and anything that doesn't start like either
+ * form are dropped rather than rejected, so a block that's being hand-edited
+ * never shows an error for a half-typed or commented-out line. Duplicates are
+ * kept as-is — a tile per line, in the order written.
+ */
+export function parseAppGridSource(source: string): AppGridEntry[] {
+	return source
+		.split("\n")
+		.map(parseEntryLine)
+		.filter((entry): entry is AppGridEntry => entry !== null);
+}
+
+/**
+ * Removes the `index`-th entry line (0-based, in the order {@link parseAppGridSource}
  * returns them) from `source`, leaving every other line — blank, a comment,
  * whatever — exactly where it was. Powers the context menu's "Delete app": the
  * tile only knows its position among the *valid* lines, never the raw line
- * number, since blank lines between URLs would otherwise throw that off.
+ * number, since blank lines between entries would otherwise throw that off.
  */
 export function removeAppGridLine(source: string, index: number): string {
 	let seen = 0;
 	const kept = source.split("\n").filter((line) => {
-		if (!HTTP_URL.test(line.trim())) return true;
+		if (!parseEntryLine(line)) return true;
 		return seen++ !== index;
 	});
 	return kept.join("\n");
+}
+
+/**
+ * Writes `name` into the `index`-th entry line, keeping the URL
+ * {@link parseAppGridSource} found there. A blank name reverts the line to a
+ * bare URL rather than `[](url)` — which would render as an invisible link
+ * anywhere this syntax is ever read literally — handing the tile back to
+ * whatever cached or looked-up name it would otherwise show.
+ */
+export function setAppGridEntryName(source: string, index: number, name: string): string {
+	const trimmed = name.trim();
+	let seen = 0;
+	const lines = source.split("\n").map((line) => {
+		const entry = parseEntryLine(line);
+		if (!entry || seen++ !== index) return line;
+		return trimmed.length > 0 ? `[${escapeEntryName(trimmed)}](${entry.url})` : entry.url;
+	});
+	return lines.join("\n");
+}
+
+/** One line, parsed as either form — the shared predicate behind every function above. */
+function parseEntryLine(line: string): AppGridEntry | null {
+	const trimmed = line.trim();
+	if (HTTP_URL.test(trimmed)) return { url: trimmed, name: null };
+
+	const hit = findMarkdownLinks(trimmed)[0];
+	if (!hit || hit.from !== 0 || hit.to !== trimmed.length) return null;
+	const name = unescapeEntryName(hit.text.trim());
+	return { url: hit.url, name: name.length > 0 ? name : null };
+}
+
+/**
+ * Backslash-escapes the two characters that would otherwise be misread as
+ * more link syntax when the line is parsed back: an unescaped `]` would close
+ * the name early, and `findMarkdownLinks`' escape handling itself keys off a
+ * literal backslash.
+ */
+function escapeEntryName(name: string): string {
+	return name.replace(/[\\[\]]/g, "\\$&");
+}
+
+function unescapeEntryName(text: string): string {
+	return text.replace(/\\([\\[\]])/g, "$1");
 }
 
 export interface AppGridInsertion {
