@@ -1,4 +1,4 @@
-import { fetchSiteInfo, SiteInfo, verifyToken } from "./api";
+import { fetchSiteInfo, fetchSiteTitleAndIconSrc, SiteInfo, SiteTitleAndIconSrc, verifyToken } from "./api";
 import { logWarn } from "./log";
 
 /**
@@ -24,6 +24,10 @@ export type LookupFailure =
 	| "timeout";
 
 export type LookupOutcome = { ok: true; info: SiteInfo } | { ok: false; reason: LookupFailure };
+
+export type TitleAndIconSrcOutcome =
+	| { ok: true; info: SiteTitleAndIconSrc }
+	| { ok: false; reason: LookupFailure };
 
 export type VerifyOutcome =
 	| { ok: true }
@@ -56,6 +60,34 @@ export class SiteLookup {
 			ok: false,
 			reason: "timeout",
 		});
+		if (!outcome.ok && outcome.reason === "timeout")
+			logWarn(`lookup for ${url} timed out after ${LOOKUP_TIMEOUT_MS}ms`);
+		return outcome;
+	}
+
+	/**
+	 * Same as {@link resolve}, but for a caller (the app-grid code block) that
+	 * wants the title and the favicon's raw signed-URL separately, so it can
+	 * check its own icon cache before deciding whether to spend a download on
+	 * it. Goes through the same queue, so a grid with many links can't burst
+	 * past the service's rate limit either.
+	 */
+	async resolveTitleAndIconSrc(url: string): Promise<TitleAndIconSrcOutcome> {
+		const { accessToken } = this.getConfig();
+		if (!accessToken) {
+			logWarn(`lookup for ${url} skipped: no access token configured`);
+			return { ok: false, reason: "unconfigured" };
+		}
+
+		const outcome = await this.withTimeout<TitleAndIconSrcOutcome>(
+			async (): Promise<TitleAndIconSrcOutcome> => {
+				const result = await fetchSiteTitleAndIconSrc(url, accessToken);
+				return result.ok
+					? { ok: true, info: result.info }
+					: { ok: false, reason: result.failure };
+			},
+			{ ok: false, reason: "timeout" }
+		);
 		if (!outcome.ok && outcome.reason === "timeout")
 			logWarn(`lookup for ${url} timed out after ${LOOKUP_TIMEOUT_MS}ms`);
 		return outcome;

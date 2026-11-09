@@ -8,6 +8,8 @@ import { isLanguage, setLanguage, t } from "./src/i18n";
 import { SiteLookup } from "./src/lookup";
 import { BetterLinkDisplayEditorFeature } from "./src/editorExtension";
 import { bookmarkMarkers, markReadingViewBookmarks } from "./src/bookmarkMarks";
+import { AppGridCache } from "./src/appGridCache";
+import { insertAppGridBlock, renderAppGrid } from "./src/appGrid";
 
 /** Set on the main window's `body` while the matching appearance option is on. */
 const BACKGROUND_CLASS = "better-link-display-background";
@@ -16,6 +18,7 @@ const BORDER_CLASS = "better-link-display-border";
 export default class BetterLinkDisplayPlugin extends Plugin {
 	settings!: BetterLinkDisplaySettings;
 	private editorFeature?: BetterLinkDisplayEditorFeature;
+	appGridCache!: AppGridCache;
 
 	async onload() {
 		await this.loadSettings();
@@ -26,14 +29,28 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 
 		const lookup = new SiteLookup(() => this.settings);
 		this.editorFeature = new BetterLinkDisplayEditorFeature(this.app, lookup);
+		this.appGridCache = new AppGridCache(this.app.vault.adapter, () => this.settings.appGridCacheDir);
 
 		this.addSettingTab(new BetterLinkDisplaySettingTab(this.app, this, lookup));
+		this.registerMarkdownCodeBlockProcessor("link-grid", (source, el, ctx) =>
+			renderAppGrid(source, el, ctx, lookup, this.appGridCache, this.app)
+		);
 		this.registerEditorExtension(this.editorFeature.extension);
 		// A formatted bookmark carries no marker in the note, so the classes
 		// styles.css needs are put on the rendered elements instead — once per
 		// view, because the two render the same Markdown differently.
 		this.registerEditorExtension(bookmarkMarkers);
 		this.registerMarkdownPostProcessor((el) => markReadingViewBookmarks(el));
+		this.registerEvent(
+			this.app.workspace.on("editor-menu", (menu, editor) => {
+				menu.addItem((item) =>
+					item
+						.setTitle(t("appGrid.insertMenu"))
+						.setIcon("layout-grid")
+						.onClick(() => insertAppGridBlock(editor))
+				);
+			})
+		);
 		this.addCommand({
 			id: "format-link-under-cursor",
 			// Obsidian reads the name once, so this follows a language change only
@@ -84,6 +101,7 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 			language: isLanguage(stored?.language) ? stored.language : defaults.language,
 			linkBackground: stored?.linkBackground ?? defaults.linkBackground,
 			linkBorder: stored?.linkBorder ?? defaults.linkBorder,
+			appGridCacheDir: stored?.appGridCacheDir || defaults.appGridCacheDir,
 		};
 		setLanguage(this.settings.language);
 	}

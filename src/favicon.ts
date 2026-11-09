@@ -4,10 +4,11 @@ import { logWarn } from "./log";
 import { siteInitial } from "./siteInitial";
 
 /**
- * Icons are written into the note itself, so they are rendered at their natural
- * pixel size wherever the note ends up. Keep three source pixels for each CSS
- * pixel at the usual 16px body size so high-density displays stay sharp; the
- * rendered size is controlled separately in styles.css.
+ * Shared by both consumers of this file: an icon inlined into a note is
+ * rendered at its natural pixel size wherever the note ends up, and a cached
+ * icon file is reused at whatever size a tile needs. Keep three source pixels
+ * for each CSS pixel at the usual 16px body size so high-density displays stay
+ * sharp; the rendered size is controlled separately in styles.css.
  */
 const ICON_PX = 48;
 
@@ -66,6 +67,27 @@ export async function toInlineIcon(src: string): Promise<string> {
 	return inlined;
 }
 
+/**
+ * Same download-and-resize pipeline as {@link toInlineIcon}, for a caller that
+ * wants to write the PNG to a file instead of inlining it as a `data:` URL —
+ * there is no `MAX_INLINE_LENGTH` cap here, since that limit exists only to
+ * bound how much a *note* grows, and a standalone file has no such pressure.
+ */
+export async function fetchIconPngBytes(src: string): Promise<ArrayBuffer | null> {
+	if (!src) return null;
+
+	let source: string;
+	if (src.startsWith("data:")) {
+		source = isSafeFaviconSrc(src) ? src : "";
+		if (!source) logWarn("favicon: inline data: URL rejected by isSafeFaviconSrc()");
+	} else {
+		source = await download(src);
+	}
+	if (!source) return null;
+
+	return encodeAtTargetResolutionToBytes(source);
+}
+
 async function download(src: string): Promise<string> {
 	if (!/^https:\/\//i.test(src)) {
 		logWarn(`favicon: refusing to download a non-https source: ${src}`);
@@ -99,17 +121,39 @@ async function download(src: string): Promise<string> {
 	}
 }
 
-/**
- * Re-encode to a PNG that is always {@link ICON_PX} square, whatever size the
- * site published. Passing a small original through untouched would make the
- * icon's resolution depend on the remote file, which is how 16px icons used to
- * end up in notes that had been promised 48px.
- */
+/** Re-encode to a `data:` URL, at the resolution {@link drawAtTargetResolution} fixes. */
 async function encodeAtTargetResolution(dataUrl: string): Promise<string> {
+	const canvas = await drawAtTargetResolution(dataUrl);
+	// The canvas is ICON_PX square by construction, so what it exports is too.
+	return canvas ? canvas.toDataURL("image/png") : "";
+}
+
+/** Same resizing, for a caller that wants PNG bytes rather than a `data:` URL. */
+async function encodeAtTargetResolutionToBytes(dataUrl: string): Promise<ArrayBuffer | null> {
+	const canvas = await drawAtTargetResolution(dataUrl);
+	if (!canvas) return null;
+
+	const blob = await new Promise<Blob | null>((resolve) =>
+		canvas.toBlob(resolve, "image/png")
+	);
+	if (!blob) {
+		logWarn("favicon: canvas.toBlob() produced nothing — icon dropped");
+		return null;
+	}
+	return blob.arrayBuffer();
+}
+
+/**
+ * Decode `dataUrl` and draw it onto a canvas that is always {@link ICON_PX}
+ * square, whatever size the site published. Passing a small original through
+ * untouched would make the icon's resolution depend on the remote file, which
+ * is how 16px icons used to end up in notes that had been promised 48px.
+ */
+async function drawAtTargetResolution(dataUrl: string): Promise<HTMLCanvasElement | null> {
 	const image = await decodeImage(dataUrl);
 	if (!image || image.naturalWidth < 1 || image.naturalHeight < 1) {
 		logWarn("favicon: decoded image has no usable dimensions — dropped");
-		return "";
+		return null;
 	}
 
 	const canvas = createEl("canvas");
@@ -118,7 +162,7 @@ async function encodeAtTargetResolution(dataUrl: string): Promise<string> {
 	const context = canvas.getContext("2d");
 	if (!context) {
 		logWarn("favicon: could not get a 2d canvas context — icon dropped");
-		return "";
+		return null;
 	}
 
 	context.imageSmoothingEnabled = true;
@@ -133,8 +177,7 @@ async function encodeAtTargetResolution(dataUrl: string): Promise<string> {
 	const y = Math.floor((ICON_PX - height) / 2);
 	context.drawImage(image, x, y, width, height);
 
-	// The canvas is ICON_PX square by construction, so what it exports is too.
-	return canvas.toDataURL("image/png");
+	return canvas;
 }
 
 async function decodeImage(dataUrl: string): Promise<HTMLImageElement | null> {

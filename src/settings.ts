@@ -14,7 +14,18 @@ export interface BetterLinkDisplaySettings {
 	linkBackground: boolean;
 	/** Draw a grey outline around formatted links. */
 	linkBorder: boolean;
+	/** Vault-relative folder the app-grid code block caches icons and titles in. */
+	appGridCacheDir: string;
 }
+
+/**
+ * Inside the plugin's own folder, which Obsidian's file explorer hides by
+ * default — there is nothing here the user is meant to browse to directly.
+ * Hardcoded rather than built from a manifest id at runtime: the id is fixed,
+ * and every other constant in this plugin (`API_BASE`, `SITE_URL`) is written
+ * the same way.
+ */
+export const DEFAULT_APP_GRID_CACHE_DIR = ".obsidian/plugins/better-link-display/favicon-cache";
 
 /**
  * A function rather than a constant because the default language depends on the
@@ -28,6 +39,7 @@ export function createDefaultSettings(): BetterLinkDisplaySettings {
 		// against, so an update must not restyle them on its own.
 		linkBackground: false,
 		linkBorder: false,
+		appGridCacheDir: DEFAULT_APP_GRID_CACHE_DIR,
 	};
 }
 
@@ -119,6 +131,11 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 					),
 				],
 			},
+			{
+				type: "group",
+				heading: t("appGrid.heading"),
+				items: [this.appGridCacheLocationSetting(), this.appGridCacheSetting()],
+			},
 		];
 		// Nothing else on this page does anything without a token, so until one is
 		// set the page opens on the group that has to be filled in first. The order
@@ -194,6 +211,67 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 				});
 			},
 		};
+	}
+
+	/** Vault-relative; saved debounced like the token field, not applied live elsewhere. */
+	private appGridCacheLocationSetting(): SettingGroupItem {
+		return {
+			name: t("appGrid.location.name"),
+			desc: t("appGrid.location.desc"),
+			render: (setting) => {
+				setting.addText((text) => {
+					text.inputEl.addClass("better-link-display-wide-input");
+					text.setValue(this.plugin.settings.appGridCacheDir).onChange((value) => {
+						// An emptied field reverts to the default rather than saving a
+						// path the cache would otherwise have to treat as the vault root.
+						this.plugin.settings.appGridCacheDir = value.trim() || DEFAULT_APP_GRID_CACHE_DIR;
+						this.queueSave();
+					});
+				});
+				setting.settingEl.addClass("better-link-display-stacked-setting");
+			},
+		};
+	}
+
+	/**
+	 * The size reads as of whenever the tab was opened — recomputing it on every
+	 * keystroke elsewhere would mean walking the cache directory far more often
+	 * than the number can usefully change.
+	 */
+	private appGridCacheSetting(): SettingGroupItem {
+		return {
+			name: t("appGrid.cache.name"),
+			desc: t("appGrid.cache.desc"),
+			render: (setting) => {
+				const sizeLabel = setting.controlEl.createSpan({
+					cls: "better-link-display-cache-size",
+				});
+				void this.refreshCacheSize(sizeLabel);
+
+				setting.addButton((button) => {
+					button.setButtonText(t("appGrid.cache.clear")).onClick(async () => {
+						button.setDisabled(true);
+						try {
+							await this.plugin.appGridCache.clear();
+						} catch (error) {
+							logError("app-grid: failed to clear the cache", error);
+							new Notice(t("appGrid.cache.clearFailed"), NOTICE_MS);
+						}
+						await this.refreshCacheSize(sizeLabel);
+						button.setDisabled(false);
+					});
+				});
+			},
+		};
+	}
+
+	private async refreshCacheSize(label: HTMLElement): Promise<void> {
+		try {
+			label.setText(formatBytes(await this.plugin.appGridCache.computeSize()));
+		} catch (error) {
+			logError("app-grid: failed to compute the cache size", error);
+			label.setText(t("appGrid.cache.sizeUnknown"));
+		}
 	}
 
 	private tokenSetting(): SettingGroupItem {
@@ -345,6 +423,19 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 		button.buttonEl.removeClass("better-link-display-test-failure");
 		button.setButtonText(t("token.test"));
 	}
+}
+
+/** 1.0 KB rather than 1024 B — settings UI, not a log line, so round to one decimal. */
+function formatBytes(bytes: number): string {
+	if (bytes < 1024) return `${bytes} B`;
+	const units = ["KB", "MB", "GB"];
+	let value = bytes / 1024;
+	let unitIndex = 0;
+	while (value >= 1024 && unitIndex < units.length - 1) {
+		value /= 1024;
+		unitIndex++;
+	}
+	return `${value.toFixed(1)} ${units[unitIndex]}`;
 }
 
 function verifyMessage(outcome: VerifyOutcome): string {

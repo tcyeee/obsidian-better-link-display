@@ -114,6 +114,41 @@ export async function fetchSiteInfo(url: string, token: string): Promise<FetchRe
 	return { ok: false, failure: "unresolved" };
 }
 
+export interface SiteTitleAndIconSrc {
+	title: string;
+	/** The service's short-lived signed CDN link, undownloaded — "" if it has none. */
+	iconSrc: string;
+}
+
+export type FetchTitleAndIconSrcResult =
+	| { ok: true; info: SiteTitleAndIconSrc }
+	| { ok: false; failure: FetchFailure };
+
+/**
+ * Same request as {@link fetchSiteInfo}, but stops short of downloading and
+ * re-encoding the favicon — a caller that may already have that domain's icon
+ * cached on disk needs to decide *before* spending a download on it, which
+ * {@link fetchSiteInfo} (committed to always inlining one) does not allow.
+ */
+export async function fetchSiteTitleAndIconSrc(
+	url: string,
+	token: string
+): Promise<FetchTitleAndIconSrcResult> {
+	const outcome = await siteInfoRequest(url, token);
+	if (!outcome.ok) return outcome;
+
+	const { payload } = outcome;
+	if (payload.ok === true && isSiteInfo(payload.data)) {
+		return {
+			ok: true,
+			info: { title: payload.data.title, iconSrc: payload.data.favicon ?? "" },
+		};
+	}
+
+	logWarn(`site-info could not resolve ${url}`, payload);
+	return { ok: false, failure: "unresolved" };
+}
+
 /**
  * Check that a token is accepted, without caring what comes back. A page the
  * service cannot resolve still proves the credential is good, so anything short

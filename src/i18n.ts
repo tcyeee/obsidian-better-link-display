@@ -74,6 +74,22 @@ const en = {
 		"Better Link Display: the service could not read this page's title. The site may be blocking it.",
 	"failure.timeout":
 		"Better Link Display: no answer within {seconds} seconds. The link was left unchanged.",
+
+	"appGrid.heading": "App grid",
+	"appGrid.location.name": "Cache location",
+	"appGrid.location.desc":
+		"Vault-relative folder where the app-grid code block caches icons and titles.",
+	"appGrid.cache.name": "Cache",
+	"appGrid.cache.desc": "Icons and titles already looked up for app-grid blocks.",
+	"appGrid.cache.clear": "Clear cache",
+	"appGrid.cache.clearFailed": "Better Link Display: could not clear the app-grid cache.",
+	"appGrid.cache.sizeUnknown": "unknown",
+	"appGrid.insertMenu": "Insert APP view",
+	"appGrid.add.aria": "Add an app",
+	"appGrid.add.title": "Add an app",
+	"appGrid.add.label": "Domain or URL",
+	"appGrid.add.placeholder": "example.com",
+	"appGrid.add.submit": "Add",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -132,6 +148,21 @@ const zh: Record<TranslationKey, string> = {
 	"failure.server": "Better Link Display：{base} 返回了错误，请稍后重试。",
 	"failure.unresolved": "Better Link Display：服务无法读取该页面的标题，可能被站点拦截了。",
 	"failure.timeout": "Better Link Display：{seconds} 秒内没有响应，链接未做修改。",
+
+	"appGrid.heading": "应用宫格",
+	"appGrid.location.name": "缓存位置",
+	"appGrid.location.desc": "应用宫格代码块缓存图标和标题的仓库内相对路径文件夹。",
+	"appGrid.cache.name": "缓存",
+	"appGrid.cache.desc": "应用宫格代码块已查询过的图标和标题。",
+	"appGrid.cache.clear": "清理缓存",
+	"appGrid.cache.clearFailed": "Better Link Display：清理应用宫格缓存失败。",
+	"appGrid.cache.sizeUnknown": "未知",
+	"appGrid.insertMenu": "插入APP视图",
+	"appGrid.add.aria": "添加应用",
+	"appGrid.add.title": "添加应用",
+	"appGrid.add.label": "域名或网址",
+	"appGrid.add.placeholder": "example.com",
+	"appGrid.add.submit": "添加",
 };
 
 const TABLES: Record<Language, Record<TranslationKey, string>> = { en, zh };

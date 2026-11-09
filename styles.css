@@ -345,3 +345,131 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
 	text-decoration: none;
 	background-color: var(--background-modifier-error);
 }
+
+/*
+ * The `link-grid` code block: one tile per link, as a grid that reflows with
+ * the note pane's width instead of overflowing it. `auto-fill` rather than a
+ * fixed column count, so a pane half the width of another still gets tiles
+ * sized the same as everywhere else, just fewer per row.
+ */
+.better-link-display-app-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+	gap: var(--size-4-3);
+	margin: var(--size-4-2) 0;
+}
+
+/*
+ * Icon above name, centred, reading as one app tile rather than a line of
+ * text with a picture in front of it — the shape the feature is modelled on.
+ * Obsidian's external-link styling (trailing arrow background image and the
+ * padding reserved for it) is removed the same way `better-link-display-bookmark`
+ * removes it, since neither reads as an "app" icon.
+ */
+a.external-link.better-link-display-app-tile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--size-4-1);
+	padding: var(--size-4-2);
+	border-radius: var(--radius-m);
+	color: var(--text-normal);
+	text-decoration: none;
+	background-image: none;
+	text-align: center;
+}
+
+a.external-link.better-link-display-app-tile:hover {
+	background-color: var(--background-modifier-hover);
+}
+
+/* Cropped from the same 48px cached/inlined source the single-link bookmark uses. */
+.better-link-display-app-tile img {
+	width: 32px;
+	height: 32px;
+	max-width: 32px;
+	max-height: 32px;
+	border-radius: var(--radius-s);
+	object-fit: contain;
+}
+
+/* One line, ellipsised rather than wrapped — a wrapped title would misalign tiles in the same row. */
+.better-link-display-app-tile-label {
+	max-width: 100%;
+	overflow: hidden;
+	font-size: var(--font-text-size);
+	line-height: var(--line-height-normal);
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/*
+ * While a tile's icon or title lookup is still in flight. Also what a newly
+ * added tile looks like the instant it appears, before its own lookup
+ * answers — the same breathing animation the single-link loading state uses,
+ * so "still resolving" reads the same way everywhere in the plugin.
+ */
+.better-link-display-app-tile-pending {
+	animation: better-link-display-app-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes better-link-display-app-pulse {
+	0%,
+	100% {
+		opacity: 0.4;
+	}
+
+	50% {
+		opacity: 0.8;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.better-link-display-app-tile-pending {
+		animation: none;
+		opacity: 0.6;
+	}
+}
+
+/*
+ * The dashed "+" tile appGrid.ts always renders (see its own comment on
+ * `buildAddTile`). `cursor` is the one visual cue that it's inert outside
+ * Live Preview, since Reading view never runs its click handler.
+ */
+.better-link-display-app-add {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: var(--size-4-2);
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	color: var(--text-faint);
+	cursor: default;
+}
+
+.cm-editor .better-link-display-app-add {
+	cursor: pointer;
+}
+
+.cm-editor .better-link-display-app-add:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+.better-link-display-app-add-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+}
+
+/* Hidden once the grid already has tiles, except inside Live Preview — see `buildAddTile`. */
+.better-link-display-app-add-trailing {
+	display: none;
+}
+
+.cm-editor .better-link-display-app-add-trailing {
+	display: flex;
+}
