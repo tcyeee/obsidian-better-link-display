@@ -816,3 +816,95 @@ a.external-link.better-link-display-app-tile:hover {
 .better-link-display-app-config-panel-switch-input:checked + .better-link-display-app-config-panel-switch-track::before {
 	transform: translateX(18px);
 }
+
+/*
+ * The "Add an app" panel opened from the grid's own add tile — see
+ * `appGridAddPanel.ts`. The same floating surface as the config panel above
+ * it (mounted to `document.body`, positioned by JS through `setCssProps`,
+ * same radius, shadow and one-layer-below-the-menu `z-index`), with
+ * `left`/`top` rather than `top`/`right` because it anchors to a tile's left
+ * edge rather than a gear button's right edge.
+ */
+.better-link-display-app-add-panel {
+	position: fixed;
+	left: var(--better-link-display-app-add-panel-left, 0);
+	top: var(--better-link-display-app-add-panel-top, 0);
+	z-index: calc(var(--layer-menu) - 1);
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	width: max-content;
+	min-width: 240px;
+	padding: 14px 16px;
+	border-radius: 16px;
+	background-color: var(--background-primary);
+	color: var(--text-normal);
+	font-size: 14px;
+	box-shadow: 0 6px 24px rgba(0, 0, 0, 0.13);
+}
+
+.better-link-display-app-add-panel-title {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--text-normal);
+}
+
+/*
+ * The URL field. A body-mounted input has no `.setting-item` ancestor for
+ * Obsidian's own text-input rules to reach it through, so it restates the
+ * essentials rather than relying on them.
+ */
+.better-link-display-app-add-panel-input {
+	width: 100%;
+	height: var(--input-height);
+	padding: 0 var(--size-4-2);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--background-secondary);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+}
+
+.better-link-display-app-add-panel-input:focus {
+	border-color: var(--interactive-accent);
+}
+
+.better-link-display-app-add-panel-actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--size-4-2);
+}
+
+/*
+ * The Cancel and Add buttons, hand-rolled like the rest of the panel for the
+ * same reason as the input above. The submit button is the accent-coloured
+ * CTA; its `:disabled` state dims it until the field holds a valid URL.
+ */
+.better-link-display-app-add-panel-button {
+	padding: var(--size-4-1) var(--size-4-3);
+	border: 1px solid var(--background-modifier-border);
+	border-radius: var(--radius-s);
+	background-color: var(--interactive-normal);
+	color: var(--text-normal);
+	font-size: var(--font-ui-small);
+	cursor: pointer;
+}
+
+.better-link-display-app-add-panel-button:hover {
+	background-color: var(--interactive-hover);
+}
+
+.better-link-display-app-add-panel-button:disabled {
+	opacity: 0.5;
+	cursor: default;
+}
+
+.better-link-display-app-add-panel-submit {
+	background-color: var(--interactive-accent);
+	border-color: var(--interactive-accent);
+	color: var(--text-on-accent);
+}
+
+.better-link-display-app-add-panel-submit:hover {
+	background-color: var(--interactive-accent-hover);
+}

@@ -11,6 +11,7 @@ import { bookmarkMarkers, markReadingViewBookmarks } from "./src/bookmarkMarks";
 import { AppGridCache } from "./src/appGridCache";
 import { insertAppGridBlock, renderAppGrid } from "./src/appGrid";
 import { closeAppConfigPanel } from "./src/appGridConfigPanel";
+import { closeAppAddPanel } from "./src/appGridAddPanel";
 import { closeContextMenu } from "./src/contextMenu";
 
 /** Set on the main window's `body` while the matching appearance option is on. */
@@ -46,10 +47,12 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 		// Switching between Live Preview and Reading view (or Source mode) fires this,
 		// and the app-grid config panel's anchor only exists in Live Preview — see
 		// closeAppConfigPanel() for why a switch has to collapse it immediately. The
-		// tile's right-click menu has the same problem: it outlives the tile's own
-		// DOM because it is mounted on document.body, see closeContextMenu().
+		// tile's right-click menu and the add panel have the same problem: they
+		// outlive the tile's own DOM because they are mounted on document.body, see
+		// closeContextMenu() and closeAppAddPanel().
 		this.registerEvent(this.app.workspace.on("layout-change", () => {
 			closeAppConfigPanel();
+			closeAppAddPanel();
 			closeContextMenu();
 		}));
 		this.registerEvent(
