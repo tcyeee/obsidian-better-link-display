@@ -22,7 +22,7 @@ import {
 import { AppGridCache } from "./appGridCache";
 import { lookupFailureMessage, SiteLookup } from "./lookup";
 import { averageIconColor, fallbackIcon, fetchIconPngBytes } from "./favicon";
-import { AppGridAddModal } from "./appGridAddModal";
+import { showAppAddPanel } from "./appGridAddPanel";
 import { showAppConfigPanel } from "./appGridConfigPanel";
 import { AppGridEditNameModal } from "./appGridEditNameModal";
 import { t } from "./i18n";
@@ -80,7 +80,7 @@ export function renderAppGrid(
 		attachContextMenu(tile, entry, index, { app, ctx, el, lookup, cache, child, config });
 	});
 
-	buildAddTile(grid, entries.length > 0, () => openAddModal(app, ctx, el));
+	buildAddTile(grid, entries.length > 0, (tile) => openAddPanel(app, ctx, el, tile));
 	attachConfigButton(el, child, (button) => openConfigPanel(button, app, ctx, el));
 }
 
@@ -134,7 +134,7 @@ async function syncAutoBackground(
  * inert) everywhere, matching the hint that cursor affordance gives: `default`
  * outside `.cm-editor`, `pointer` inside it.
  */
-function buildAddTile(grid: HTMLElement, trailing: boolean, onAdd: () => void): void {
+function buildAddTile(grid: HTMLElement, trailing: boolean, onAdd: (tile: HTMLElement) => void): void {
 	const tile = grid.createDiv({
 		cls: trailing ? `${ADD_TILE_CLASS} ${ADD_TILE_TRAILING_CLASS}` : ADD_TILE_CLASS,
 	});
@@ -150,7 +150,7 @@ function buildAddTile(grid: HTMLElement, trailing: boolean, onAdd: () => void): 
 		// time, when the element may not even be attached to the real DOM yet.
 		if (!tile.closest(".cm-editor")) return;
 		event.preventDefault();
-		onAdd();
+		onAdd(tile);
 	};
 	tile.addEventListener("click", trigger);
 	tile.addEventListener("keydown", (event) => {
@@ -159,21 +159,27 @@ function buildAddTile(grid: HTMLElement, trailing: boolean, onAdd: () => void): 
 }
 
 /**
- * Opens the "Add an app" dialog and, once submitted, writes the URL into the
- * block's own source line — right before its closing fence, found through
- * `getSectionInfo` on the same `el` the processor was given (a child element
- * won't resolve). The rewrite is all this does: Live Preview re-renders the
- * block from the changed document the same way it would for an edit typed by
- * hand, which is what gives the new tile its pending icon/app name and, once
- * the lookup answers, the real ones — see {@link resolveTile}.
+ * Opens the "Add an app" panel anchored to the add tile and, once submitted,
+ * writes the URL into the block's own source line — right before its closing
+ * fence, found through `getSectionInfo` on the same `el` the processor was
+ * given (a child element won't resolve). The rewrite is all this does: Live
+ * Preview re-renders the block from the changed document the same way it
+ * would for an edit typed by hand, which is what gives the new tile its
+ * pending icon/app name and, once the lookup answers, the real ones — see
+ * {@link resolveTile}.
  */
-function openAddModal(app: App, ctx: MarkdownPostProcessorContext, el: HTMLElement): void {
-	new AppGridAddModal(app, (url) => {
+function openAddPanel(
+	app: App,
+	ctx: MarkdownPostProcessorContext,
+	el: HTMLElement,
+	tile: HTMLElement
+): void {
+	showAppAddPanel(tile, (url) => {
 		const editor = findEditor(app, ctx.sourcePath);
 		const info = ctx.getSectionInfo(el);
 		if (!editor || !info) return;
 		editor.replaceRange(`${url}\n`, { line: info.lineEnd, ch: 0 });
-	}).open();
+	});
 }
 
 /**
@@ -231,7 +237,7 @@ function attachConfigButton(
 /**
  * Opens the appearance panel for this block and, on every change, writes
  * the result back as the block's own first line — same `getSectionInfo`
- * lookup as {@link openAddModal}, reading the body fresh at click time so
+ * lookup as {@link openAddPanel}, reading the body fresh at click time so
  * the panel starts from whatever the block actually holds rather than its
  * state when the block was last rendered. Each edit re-reads the body (and
  * re-finds the editor/section) rather than closing over the first lookup,
@@ -482,15 +488,14 @@ function openTileMenu(entry: RegisteredTile, x: number, y: number): void {
 			{
 				icon: "refresh-cw",
 				label: t("appGrid.menu.update"),
-				onClick: () =>
-					void updateTile(tile, url, context.lookup, context.cache, context.child, context.config),
+				onClick: () => void updateTile(tile, url, index, context),
 			},
 			{
 				icon: "trash-2",
 				label: t("appGrid.menu.delete"),
 				danger: true,
 				separatorBefore: true,
-				onClick: () => deleteTile(context.app, context.ctx, context.el, index),
+				onClick: () => deleteTile(context, index),
 			},
 		],
 		x,
@@ -499,42 +504,57 @@ function openTileMenu(entry: RegisteredTile, x: number, y: number): void {
 }
 
 /**
+ * Writes `transform(body)` back into the block's own source, where `body` is
+ * the block's lines — everything between the fences, read fresh at the moment
+ * of the write. The shared save path for every action that edits a block's
+ * *body* rather than its config line (see {@link openConfigPanel}): the editor
+ * and section are re-found each call rather than closed over, since a previous
+ * write already shifted line numbers and re-rendered the block. `transform` is
+ * handed the body the block actually holds and returns the whole replacement.
+ */
+function writeAppGridBody(context: TileContext, transform: (body: string) => string): void {
+	const editor = findEditor(context.app, context.ctx.sourcePath);
+	const info = context.ctx.getSectionInfo(context.el);
+	if (!editor || !info) return;
+	const from = { line: info.lineStart + 1, ch: 0 };
+	const to = { line: info.lineEnd, ch: 0 };
+	editor.replaceRange(transform(editor.getRange(from, to)), from, to);
+}
+
+/**
  * The "Edit name" dialog's save path. The name the user gives is written into
- * the block's own source line as `[Name](url)` — the same `getSectionInfo`
- * lookup as {@link openAddModal} — rather than into the shared app-name cache,
- * which is the *looked-up* name every note with the same bare URL falls back
- * to. The block re-renders from the changed document, so there is no tile to
- * update by hand: {@link parseAppGridSource} hands the name straight back to
- * {@link buildTile} on the next pass. A name the user clears is reverted to a
- * bare URL by {@link setAppGridEntryName}, restoring the cached/looked-up name.
+ * the block's own source line as `[Name](url)` — see {@link writeAppGridBody}
+ * for the mechanics — rather than into the shared app-name cache, which is the
+ * *looked-up* name every note with the same bare URL falls back to. The block
+ * re-renders from the changed document, so there is no tile to update by hand:
+ * {@link parseAppGridSource} hands the name straight back to {@link buildTile}
+ * on the next pass. A name the user clears is reverted to a bare URL by
+ * {@link setAppGridEntryName}, restoring the cached/looked-up name.
  */
 function openEditNameModal(context: TileContext, index: number, tile: Tile): void {
 	new AppGridEditNameModal(context.app, tile.label.textContent ?? "", (name) => {
-		const editor = findEditor(context.app, context.ctx.sourcePath);
-		const info = context.ctx.getSectionInfo(context.el);
-		if (!editor || !info) return;
-		const from = { line: info.lineStart + 1, ch: 0 };
-		const to = { line: info.lineEnd, ch: 0 };
-		editor.replaceRange(
-			setAppGridEntryName(editor.getRange(from, to), index, name),
-			from,
-			to
-		);
+		writeAppGridBody(context, (body) => setAppGridEntryName(body, index, name));
 	}).open();
 }
 
-/** Bypasses both caches on purpose — this is the one action that re-asks the service for a page's name and icon. */
+/**
+ * The "Update app" action. Bypasses both caches on purpose — it is the one
+ * action that re-asks the service for a page's name and icon — then writes the
+ * freshly looked-up name back into the block's own source line as `[Name](url)`
+ * (see {@link writeAppGridBody}), so the name becomes the user's explicit
+ * override rather than something the next render re-falls back to the cache
+ * for. The cache updates land first, so the re-render the write triggers shows
+ * the fresh icon and name instead of the stale ones.
+ */
 async function updateTile(
 	tile: Tile,
 	url: string,
-	lookup: SiteLookup,
-	cache: AppGridCache,
-	child: AppGridRenderChild,
-	config: AppGridConfig
+	index: number,
+	context: TileContext
 ): Promise<void> {
 	tile.anchor.addClass(TILE_PENDING_CLASS);
-	const outcome = await lookup.resolveAppInfo(url);
-	if (child.cancelled) return;
+	const outcome = await context.lookup.resolveAppInfo(url);
+	if (context.child.cancelled) return;
 	tile.anchor.removeClass(TILE_PENDING_CLASS);
 
 	if (!outcome.ok) {
@@ -543,36 +563,27 @@ async function updateTile(
 	}
 
 	tile.label.setText(outcome.info.appName);
-	void cache.setAppName(url, outcome.info.appName);
+	void context.cache.setAppName(url, outcome.info.appName);
 
 	const bytes = await fetchIconPngBytes(outcome.info.iconSrc);
-	if (child.cancelled || !bytes) return;
-	await cache.writeIcon(url, bytes);
-	const freshPath = await cache.getIconResourcePath(url);
-	if (child.cancelled || !freshPath) return;
+	if (context.child.cancelled || !bytes) return;
+	await context.cache.writeIcon(url, bytes);
+	const freshPath = await context.cache.getIconResourcePath(url);
+	if (context.child.cancelled || !freshPath) return;
 	tile.icon.src = freshPath;
-	void syncAutoBackground(tile, config, child);
+	void syncAutoBackground(tile, context.config, context.child);
+
+	writeAppGridBody(context, (body) => setAppGridEntryName(body, index, outcome.info.appName));
 }
 
 /**
- * Removes this tile's line from the block's own source, found the same way
- * {@link openAddModal} finds where to insert one — `getSectionInfo` on the
- * processor's own `el`, not the tile. `index` is this tile's position among
- * the block's *valid* lines (see {@link removeAppGridLine}), not its raw line
- * number, since blank or commented-out lines would otherwise throw that off.
+ * Removes this tile's line from the block's own source — see
+ * {@link writeAppGridBody}. `index` is this tile's position among the block's
+ * *valid* lines (see {@link removeAppGridLine}), not its raw line number, since
+ * blank or commented-out lines would otherwise throw that off.
  */
-function deleteTile(
-	app: App,
-	ctx: MarkdownPostProcessorContext,
-	el: HTMLElement,
-	index: number
-): void {
-	const editor = findEditor(app, ctx.sourcePath);
-	const info = ctx.getSectionInfo(el);
-	if (!editor || !info) return;
-	const from = { line: info.lineStart + 1, ch: 0 };
-	const to = { line: info.lineEnd, ch: 0 };
-	editor.replaceRange(removeAppGridLine(editor.getRange(from, to), index), from, to);
+function deleteTile(context: TileContext, index: number): void {
+	writeAppGridBody(context, (body) => removeAppGridLine(body, index));
 }
 
 /**
