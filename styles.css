@@ -403,7 +403,73 @@ a.external-link.better-link-display-app-tile:hover {
 	white-space: nowrap;
 }
 
-/* While a tile's icon or title lookup is still in flight. */
+/*
+ * While a tile's icon or title lookup is still in flight. Also what a newly
+ * added tile looks like the instant it appears, before its own lookup
+ * answers — the same breathing animation the single-link loading state uses,
+ * so "still resolving" reads the same way everywhere in the plugin.
+ */
 .better-link-display-app-tile-pending {
-	opacity: 0.6;
+	animation: better-link-display-app-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes better-link-display-app-pulse {
+	0%,
+	100% {
+		opacity: 0.4;
+	}
+
+	50% {
+		opacity: 0.8;
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.better-link-display-app-tile-pending {
+		animation: none;
+		opacity: 0.6;
+	}
+}
+
+/*
+ * The dashed "+" tile appGrid.ts always renders (see its own comment on
+ * `buildAddTile`). `cursor` is the one visual cue that it's inert outside
+ * Live Preview, since Reading view never runs its click handler.
+ */
+.better-link-display-app-add {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: var(--size-4-2);
+	border: 1px dashed var(--background-modifier-border);
+	border-radius: var(--radius-m);
+	color: var(--text-faint);
+	cursor: default;
+}
+
+.cm-editor .better-link-display-app-add {
+	cursor: pointer;
+}
+
+.cm-editor .better-link-display-app-add:hover {
+	color: var(--text-normal);
+	background-color: var(--background-modifier-hover);
+}
+
+.better-link-display-app-add-icon {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+}
+
+/* Hidden once the grid already has tiles, except inside Live Preview — see `buildAddTile`. */
+.better-link-display-app-add-trailing {
+	display: none;
+}
+
+.cm-editor .better-link-display-app-add-trailing {
+	display: flex;
 }

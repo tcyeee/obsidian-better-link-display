@@ -84,6 +84,12 @@ const en = {
 	"appGrid.cache.clear": "Clear cache",
 	"appGrid.cache.clearFailed": "Better Link Display: could not clear the app-grid cache.",
 	"appGrid.cache.sizeUnknown": "unknown",
+	"appGrid.insertMenu": "Insert APP view",
+	"appGrid.add.aria": "Add an app",
+	"appGrid.add.title": "Add an app",
+	"appGrid.add.label": "Domain or URL",
+	"appGrid.add.placeholder": "example.com",
+	"appGrid.add.submit": "Add",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -151,6 +157,12 @@ const zh: Record<TranslationKey, string> = {
 	"appGrid.cache.clear": "清理缓存",
 	"appGrid.cache.clearFailed": "Better Link Display：清理应用宫格缓存失败。",
 	"appGrid.cache.sizeUnknown": "未知",
+	"appGrid.insertMenu": "插入APP视图",
+	"appGrid.add.aria": "添加应用",
+	"appGrid.add.title": "添加应用",
+	"appGrid.add.label": "域名或网址",
+	"appGrid.add.placeholder": "example.com",
+	"appGrid.add.submit": "添加",
 };
 
 const TABLES: Record<Language, Record<TranslationKey, string>> = { en, zh };
