@@ -193,3 +193,60 @@ async function decodeImage(dataUrl: string): Promise<HTMLImageElement | null> {
 		return null;
 	}
 }
+
+/** Mixed toward white so the result reads as a tint rather than the icon's own tone. */
+const TILE_BACKGROUND_LIGHTEN = 0.6;
+
+/**
+ * An unweighted average over `img`'s non-transparent pixels, lightened, for
+ * the app-grid tile's "APP background colour" option. `img` is already in
+ * the DOM with its `src` set by the caller — a cached icon's `src` is an
+ * `app://` resource path rather than a `data:` URL, and nothing here assumes
+ * that origin can't someday taint the canvas it's drawn onto, hence the two
+ * try/catches: a tile simply keeps no tint rather than this throwing.
+ */
+export async function averageIconColor(img: HTMLImageElement): Promise<string | null> {
+	try {
+		if (!img.complete) await img.decode();
+	} catch (error) {
+		logWarn("favicon: image failed to decode while sampling its colour", error);
+		return null;
+	}
+
+	const width = img.naturalWidth;
+	const height = img.naturalHeight;
+	if (width < 1 || height < 1) return null;
+
+	const canvas = createEl("canvas");
+	canvas.width = width;
+	canvas.height = height;
+	const context = canvas.getContext("2d");
+	if (!context) return null;
+
+	try {
+		context.drawImage(img, 0, 0);
+		const { data } = context.getImageData(0, 0, width, height);
+
+		let r = 0;
+		let g = 0;
+		let b = 0;
+		let count = 0;
+		for (let i = 0; i < data.length; i += 4) {
+			if (data[i + 3] < 16) continue; // skip near-transparent pixels
+			r += data[i];
+			g += data[i + 1];
+			b += data[i + 2];
+			count++;
+		}
+		if (count === 0) return null;
+
+		const lighten = (sum: number) =>
+			Math.round(sum / count + (255 - sum / count) * TILE_BACKGROUND_LIGHTEN);
+		return [lighten(r), lighten(g), lighten(b)]
+			.map((channel) => Math.min(255, Math.max(0, channel)).toString(16).padStart(2, "0"))
+			.join("");
+	} catch (error) {
+		logWarn("favicon: could not sample icon colour (possibly a tainted canvas)", error);
+		return null;
+	}
+}
