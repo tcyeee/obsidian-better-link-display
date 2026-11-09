@@ -180,8 +180,8 @@ const zh: Record<TranslationKey, string> = {
 	"appGrid.add.placeholder": "example.com",
 	"appGrid.add.submit": "添加",
 	"appGrid.menu.editName": "编辑名称",
-	"appGrid.menu.update": "更新APP",
-	"appGrid.menu.delete": "删除APP",
+	"appGrid.menu.update": "更新书签",
+	"appGrid.menu.delete": "删除书签",
 	"appGrid.editName.label": "应用名称",
 	"appGrid.config.aria": "设置应用宫格样式",
 	"appGrid.config.iconSize": "图标大小",
@@ -194,7 +194,7 @@ const zh: Record<TranslationKey, string> = {
 	"appGrid.config.background.gray": "浅灰色",
 	"appGrid.config.background.beige": "浅豆沙色",
 	"appGrid.config.appearance": "外观",
-	"appGrid.config.appBackground": "APP背景颜色",
+	"appGrid.config.appBackground": "书签背景颜色",
 };
 
 const TABLES: Record<Language, Record<TranslationKey, string>> = { en, zh };

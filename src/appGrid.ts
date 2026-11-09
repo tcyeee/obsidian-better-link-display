@@ -10,11 +10,13 @@ import {
 import { showContextMenu } from "./contextMenu";
 import {
 	AppGridConfig,
+	AppGridEntry,
 	buildAppGridInsertion,
 	normalizeAppGridUrl,
 	parseAppGridConfig,
 	parseAppGridSource,
 	removeAppGridLine,
+	setAppGridEntryName,
 	upsertAppGridConfigLine,
 } from "./appGridScan";
 import { AppGridCache } from "./appGridCache";
@@ -70,15 +72,15 @@ export function renderAppGrid(
 	const config = parseAppGridConfig(source);
 	const grid = el.createDiv({ cls: GRID_CLASS });
 	applyAppearance(grid, config);
-	const urls = parseAppGridSource(source);
-	urls.forEach((url, index) => {
-		const tile = buildTile(grid, url);
+	const entries = parseAppGridSource(source);
+	entries.forEach((entry, index) => {
+		const tile = buildTile(grid, entry);
 		void syncAutoBackground(tile, config, child);
-		void resolveTile(tile, url, lookup, cache, child, config);
-		attachContextMenu(tile, url, index, { app, ctx, el, lookup, cache, child, config });
+		void resolveTile(tile, entry, lookup, cache, child, config);
+		attachContextMenu(tile, entry, index, { app, ctx, el, lookup, cache, child, config });
 	});
 
-	buildAddTile(grid, urls.length > 0, () => openAddModal(app, ctx, el));
+	buildAddTile(grid, entries.length > 0, () => openAddModal(app, ctx, el));
 	attachConfigButton(el, child, (button) => openConfigPanel(button, app, ctx, el));
 }
 
@@ -278,24 +280,35 @@ interface Tile {
 	label: HTMLElement;
 }
 
-function buildTile(grid: HTMLElement, url: string): Tile {
+function buildTile(grid: HTMLElement, entry: AppGridEntry): Tile {
+	const { url } = entry;
 	const anchor = grid.createEl("a", {
 		cls: `external-link ${TILE_CLASS} ${TILE_PENDING_CLASS}`,
 		href: url,
 	});
 	const icon = anchor.createEl("img", { attr: { src: fallbackIcon(url), alt: "" } });
-	const label = anchor.createDiv({ cls: `${TILE_CLASS}-label`, text: hostnameOf(url) ?? url });
+	const label = anchor.createDiv({
+		cls: `${TILE_CLASS}-label`,
+		text: entry.name ?? hostnameOf(url) ?? url,
+	});
 	return { anchor, icon, label };
 }
 
+/**
+ * A name written into the block's own source line (`entry.name`) always wins
+ * over the cached or looked-up one: it is the user's explicit override, and
+ * silently replacing it with whatever the service answers next would make
+ * `setAppGridEntryName`'s write pointless.
+ */
 async function resolveTile(
 	tile: Tile,
-	url: string,
+	entry: AppGridEntry,
 	lookup: SiteLookup,
 	cache: AppGridCache,
 	child: AppGridRenderChild,
 	config: AppGridConfig
 ): Promise<void> {
+	const { url } = entry;
 	const [cachedIconPath, cachedAppName] = await Promise.all([
 		cache.getIconResourcePath(url),
 		cache.getAppName(url),
@@ -306,9 +319,9 @@ async function resolveTile(
 		tile.icon.src = cachedIconPath;
 		void syncAutoBackground(tile, config, child);
 	}
-	if (cachedAppName) tile.label.setText(cachedAppName);
+	if (!entry.name && cachedAppName) tile.label.setText(cachedAppName);
 
-	if (cachedIconPath && cachedAppName) {
+	if (cachedIconPath && (entry.name || cachedAppName)) {
 		tile.anchor.removeClass(TILE_PENDING_CLASS);
 		return;
 	}
@@ -319,7 +332,7 @@ async function resolveTile(
 	// A failed lookup keeps whatever placeholder or cached value the tile
 	// already has — a missing app name or icon is still worth showing a link for.
 	if (outcome.ok) {
-		if (!cachedAppName) {
+		if (!entry.name && !cachedAppName) {
 			tile.label.setText(outcome.info.appName);
 			void cache.setAppName(url, outcome.info.appName);
 		}
@@ -380,11 +393,11 @@ const captureInstalled = new WeakSet<Window>();
  */
 function attachContextMenu(
 	tile: Tile,
-	url: string,
+	entry: AppGridEntry,
 	index: number,
 	context: TileContext
 ): void {
-	tileRegistry.set(tile.anchor, { tile, url, index, context });
+	tileRegistry.set(tile.anchor, { tile, url: entry.url, index, context });
 	const win = tile.anchor.ownerDocument.defaultView;
 	if (win) ensureContextMenuCapture(win);
 }
@@ -430,6 +443,15 @@ function ensureContextMenuCapture(win: Window): void {
 
 			const anchor = event.target.closest<HTMLAnchorElement>(`a.${TILE_CLASS}`);
 			if (anchor) {
+				// This menu is a Live Preview affordance; Reading view still swallows
+				// the event (no native link menu on a grid tile either) but doesn't
+				// open it, since Delete has no editor behind the tile there to write
+				// through.
+				if (!anchor.closest(".cm-editor")) {
+					event.preventDefault();
+					event.stopImmediatePropagation();
+					return;
+				}
 				const entry = tileRegistry.get(anchor);
 				if (!entry) return;
 				event.preventDefault();
@@ -447,15 +469,15 @@ function ensureContextMenuCapture(win: Window): void {
 	);
 }
 
+/** Only ever called from inside `.cm-editor` — see the guard in {@link ensureContextMenuCapture}. */
 function openTileMenu(entry: RegisteredTile, x: number, y: number): void {
 	const { tile, url, index, context } = entry;
-	const inEditor = !!tile.anchor.closest(".cm-editor");
 	showContextMenu(
 		[
 			{
 				icon: "pencil",
 				label: t("appGrid.menu.editName"),
-				onClick: () => openEditNameModal(context.app, url, tile, context.cache),
+				onClick: () => openEditNameModal(context, index, tile),
 			},
 			{
 				icon: "refresh-cw",
@@ -467,7 +489,6 @@ function openTileMenu(entry: RegisteredTile, x: number, y: number): void {
 				icon: "trash-2",
 				label: t("appGrid.menu.delete"),
 				danger: true,
-				disabled: !inEditor,
 				separatorBefore: true,
 				onClick: () => deleteTile(context.app, context.ctx, context.el, index),
 			},
@@ -477,10 +498,28 @@ function openTileMenu(entry: RegisteredTile, x: number, y: number): void {
 	);
 }
 
-function openEditNameModal(app: App, url: string, tile: Tile, cache: AppGridCache): void {
-	new AppGridEditNameModal(app, tile.label.textContent ?? "", (name) => {
-		tile.label.setText(name);
-		void cache.setAppName(url, name);
+/**
+ * The "Edit name" dialog's save path. The name the user gives is written into
+ * the block's own source line as `[Name](url)` — the same `getSectionInfo`
+ * lookup as {@link openAddModal} — rather than into the shared app-name cache,
+ * which is the *looked-up* name every note with the same bare URL falls back
+ * to. The block re-renders from the changed document, so there is no tile to
+ * update by hand: {@link parseAppGridSource} hands the name straight back to
+ * {@link buildTile} on the next pass. A name the user clears is reverted to a
+ * bare URL by {@link setAppGridEntryName}, restoring the cached/looked-up name.
+ */
+function openEditNameModal(context: TileContext, index: number, tile: Tile): void {
+	new AppGridEditNameModal(context.app, tile.label.textContent ?? "", (name) => {
+		const editor = findEditor(context.app, context.ctx.sourcePath);
+		const info = context.ctx.getSectionInfo(context.el);
+		if (!editor || !info) return;
+		const from = { line: info.lineStart + 1, ch: 0 };
+		const to = { line: info.lineEnd, ch: 0 };
+		editor.replaceRange(
+			setAppGridEntryName(editor.getRange(from, to), index, name),
+			from,
+			to
+		);
 	}).open();
 }
 

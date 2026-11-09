@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import { test } from "node:test";
 import {
 	AppGridConfig,
+	AppGridEntry,
 	DEFAULT_APP_GRID_CONFIG,
 	buildAppGridInsertion,
 	normalizeAppGridUrl,
@@ -9,22 +10,26 @@ import {
 	parseAppGridSource,
 	removeAppGridLine,
 	serializeAppGridConfig,
+	setAppGridEntryName,
 	upsertAppGridConfigLine,
 } from "./appGridScan";
+
+/** A bare-URL entry by default; pass a name for a `[Name](url)` line. */
+const entry = (url: string, name: string | null = null): AppGridEntry => ({ url, name });
 
 test("one URL per line", () => {
 	const source = "https://example.com\nhttps://example.org";
 	assert.deepEqual(parseAppGridSource(source), [
-		"https://example.com",
-		"https://example.org",
+		entry("https://example.com"),
+		entry("https://example.org"),
 	]);
 });
 
 test("drops blank lines", () => {
 	const source = "https://example.com\n\n\nhttps://example.org\n";
 	assert.deepEqual(parseAppGridSource(source), [
-		"https://example.com",
-		"https://example.org",
+		entry("https://example.com"),
+		entry("https://example.org"),
 	]);
 });
 
@@ -37,30 +42,57 @@ test("drops lines that don't start with http(s)", () => {
 		"http://example.net",
 	].join("\n");
 	assert.deepEqual(parseAppGridSource(source), [
-		"https://example.com",
-		"http://example.net",
+		entry("https://example.com"),
+		entry("http://example.net"),
 	]);
 });
 
 test("trims surrounding whitespace on each line", () => {
 	const source = "  https://example.com  \n\thttps://example.org\t";
 	assert.deepEqual(parseAppGridSource(source), [
-		"https://example.com",
-		"https://example.org",
+		entry("https://example.com"),
+		entry("https://example.org"),
 	]);
 });
 
 test("keeps duplicates in the order written", () => {
 	const source = "https://example.com\nhttps://example.com";
 	assert.deepEqual(parseAppGridSource(source), [
-		"https://example.com",
-		"https://example.com",
+		entry("https://example.com"),
+		entry("https://example.com"),
 	]);
 });
 
 test("an empty block parses to an empty list", () => {
 	assert.deepEqual(parseAppGridSource(""), []);
 	assert.deepEqual(parseAppGridSource("   \n  \n"), []);
+});
+
+test("reads a name written into a [Name](url) line", () => {
+	assert.deepEqual(parseAppGridSource("[My Site](https://example.com)"), [
+		entry("https://example.com", "My Site"),
+	]);
+});
+
+test("mixes bare-URL and named lines in the order written", () => {
+	const source = "https://example.com\n[Custom](https://example.org)\nhttps://example.net";
+	assert.deepEqual(parseAppGridSource(source), [
+		entry("https://example.com"),
+		entry("https://example.org", "Custom"),
+		entry("https://example.net"),
+	]);
+});
+
+test("unescapes brackets and backslashes in a written name", () => {
+	assert.deepEqual(parseAppGridSource("[a \\] b \\\\ c](https://example.com)"), [
+		entry("https://example.com", "a ] b \\ c"),
+	]);
+});
+
+test("a link whose text is empty reads as a bare URL", () => {
+	assert.deepEqual(parseAppGridSource("[](https://example.com)"), [
+		entry("https://example.com"),
+	]);
 });
 
 test("inserting on an empty line starts the block there", () => {
@@ -125,9 +157,56 @@ test("removeAppGridLine is a no-op for an out-of-range index", () => {
 	assert.equal(removeAppGridLine(source, 5), source);
 });
 
+test("removeAppGridLine drops a named line too", () => {
+	const source = "https://example.com\n[My Site](https://example.org)\nhttps://example.net";
+	assert.equal(
+		removeAppGridLine(source, 1),
+		"https://example.com\nhttps://example.net"
+	);
+});
+
 test("parseAppGridSource skips a config line", () => {
 	const source = "icon=32;gap=12;bg=;appbg=0;;\nhttps://example.com";
-	assert.deepEqual(parseAppGridSource(source), ["https://example.com"]);
+	assert.deepEqual(parseAppGridSource(source), [entry("https://example.com")]);
+});
+
+test("setAppGridEntryName writes a name onto a bare-URL line", () => {
+	const source = "https://example.com\nhttps://example.org";
+	assert.equal(
+		setAppGridEntryName(source, 1, "My Site"),
+		"https://example.com\n[My Site](https://example.org)"
+	);
+});
+
+test("setAppGridEntryName replaces a name already written", () => {
+	const source = "[Old](https://example.com)\nhttps://example.org";
+	assert.equal(
+		setAppGridEntryName(source, 0, "New"),
+		"[New](https://example.com)\nhttps://example.org"
+	);
+});
+
+test("setAppGridEntryName escapes brackets and backslashes so the line parses back", () => {
+	const source = "https://example.com";
+	const name = "a [b] \\ c";
+	assert.equal(setAppGridEntryName(source, 0, name), "[a \\[b\\] \\\\ c](https://example.com)");
+	assert.deepEqual(
+		parseAppGridSource(setAppGridEntryName(source, 0, name)),
+		[entry("https://example.com", name)]
+	);
+});
+
+test("setAppGridEntryName reverts a blank name to a bare URL", () => {
+	const source = "[My Site](https://example.com)";
+	assert.equal(setAppGridEntryName(source, 0, "   "), "https://example.com");
+});
+
+test("setAppGridEntryName leaves every other line untouched", () => {
+	const source = ["# a comment", "https://example.com", "", "https://example.org"].join("\n");
+	assert.equal(
+		setAppGridEntryName(source, 0, "Named"),
+		["# a comment", "[Named](https://example.com)", "", "https://example.org"].join("\n")
+	);
 });
 
 test("parseAppGridConfig returns defaults when there is no config line", () => {

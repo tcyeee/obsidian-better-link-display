@@ -20,6 +20,18 @@ const SEPARATOR_CLASS = "better-link-display-context-menu-separator";
 let closeActiveMenu: (() => void) | null = null;
 
 /**
+ * Closes whatever menu is open, if any. The menu is mounted on `document.body`
+ * rather than inside the grid tile it was opened from, so switching Live
+ * Preview and Reading view — which tears down and rebuilds the tile's DOM,
+ * see {@link AppGridRenderChild} in appGrid.ts — leaves it floating with no
+ * tile left to anchor it. main.ts calls this on the workspace's
+ * `layout-change`, which fires on exactly that switch.
+ */
+export function closeContextMenu(): void {
+	closeActiveMenu?.();
+}
+
+/**
  * A hand-rolled right-click menu for the app-grid tile, styled to read as one
  * of Obsidian's own (rounded corners, shadow, grouped destructive actions —
  * see `styles.css`) without going through the `Menu` API, which can't express
