@@ -10,6 +10,7 @@ import { BetterLinkDisplayEditorFeature } from "./src/editorExtension";
 import { bookmarkMarkers, markReadingViewBookmarks } from "./src/bookmarkMarks";
 import { AppGridCache } from "./src/appGridCache";
 import { insertAppGridBlock, renderAppGrid } from "./src/appGrid";
+import { closeAppConfigPanel } from "./src/appGridConfigPanel";
 
 /** Set on the main window's `body` while the matching appearance option is on. */
 const BACKGROUND_CLASS = "better-link-display-background";
@@ -41,6 +42,10 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 		// view, because the two render the same Markdown differently.
 		this.registerEditorExtension(bookmarkMarkers);
 		this.registerMarkdownPostProcessor((el) => markReadingViewBookmarks(el));
+		// Switching between Live Preview and Reading view (or Source mode) fires this,
+		// and the app-grid config panel's anchor only exists in Live Preview — see
+		// closeAppConfigPanel() for why a switch has to collapse it immediately.
+		this.registerEvent(this.app.workspace.on("layout-change", () => closeAppConfigPanel()));
 		this.registerEvent(
 			this.app.workspace.on("editor-menu", (menu, editor) => {
 				menu.addItem((item) =>

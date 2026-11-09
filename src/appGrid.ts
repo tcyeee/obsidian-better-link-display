@@ -21,7 +21,7 @@ import { AppGridCache } from "./appGridCache";
 import { lookupFailureMessage, SiteLookup } from "./lookup";
 import { averageIconColor, fallbackIcon, fetchIconPngBytes } from "./favicon";
 import { AppGridAddModal } from "./appGridAddModal";
-import { AppGridConfigModal } from "./appGridConfigModal";
+import { showAppConfigPanel } from "./appGridConfigPanel";
 import { AppGridEditNameModal } from "./appGridEditNameModal";
 import { t } from "./i18n";
 
@@ -79,7 +79,7 @@ export function renderAppGrid(
 	});
 
 	buildAddTile(grid, urls.length > 0, () => openAddModal(app, ctx, el));
-	attachConfigButton(el, child, () => openConfigModal(app, ctx, el));
+	attachConfigButton(el, child, (button) => openConfigPanel(button, app, ctx, el));
 }
 
 /**
@@ -193,7 +193,7 @@ function openAddModal(app: App, ctx: MarkdownPostProcessorContext, el: HTMLEleme
 function attachConfigButton(
 	el: HTMLElement,
 	child: AppGridRenderChild,
-	onOpen: () => void
+	onOpen: (button: HTMLElement) => void
 ): void {
 	const host = el.parentElement;
 	if (!host) return;
@@ -205,7 +205,7 @@ function attachConfigButton(
 		setIcon(button, "settings");
 		button.addEventListener("click", (event) => {
 			event.preventDefault();
-			onOpen();
+			onOpen(button);
 		});
 		bar.prepend(button);
 	};
@@ -227,13 +227,21 @@ function attachConfigButton(
 }
 
 /**
- * Opens the appearance dialog for this block and, on save, writes its result
- * back as the block's own first line — same `getSectionInfo` lookup as
- * {@link openAddModal}, reading the body fresh at click time so the dialog
- * starts from whatever the block actually holds rather than its state when
- * the block was last rendered.
+ * Opens the appearance panel for this block and, on every change, writes
+ * the result back as the block's own first line — same `getSectionInfo`
+ * lookup as {@link openAddModal}, reading the body fresh at click time so
+ * the panel starts from whatever the block actually holds rather than its
+ * state when the block was last rendered. Each edit re-reads the body (and
+ * re-finds the editor/section) rather than closing over the first lookup,
+ * since the previous write already shifted line numbers and re-rendered the
+ * block the panel's own anchor sits on top of.
  */
-function openConfigModal(app: App, ctx: MarkdownPostProcessorContext, el: HTMLElement): void {
+function openConfigPanel(
+	button: HTMLElement,
+	app: App,
+	ctx: MarkdownPostProcessorContext,
+	el: HTMLElement
+): void {
 	const editor = findEditor(app, ctx.sourcePath);
 	const info = ctx.getSectionInfo(el);
 	if (!editor || !info) return;
@@ -241,9 +249,18 @@ function openConfigModal(app: App, ctx: MarkdownPostProcessorContext, el: HTMLEl
 	const to = { line: info.lineEnd, ch: 0 };
 	const body = editor.getRange(from, to);
 
-	new AppGridConfigModal(app, parseAppGridConfig(body), (config) => {
-		editor.replaceRange(upsertAppGridConfigLine(body, config), from, to);
-	}).open();
+	showAppConfigPanel(button, parseAppGridConfig(body), (config) => {
+		const freshEditor = findEditor(app, ctx.sourcePath);
+		const freshInfo = ctx.getSectionInfo(el);
+		if (!freshEditor || !freshInfo) return;
+		const freshFrom = { line: freshInfo.lineStart + 1, ch: 0 };
+		const freshTo = { line: freshInfo.lineEnd, ch: 0 };
+		freshEditor.replaceRange(
+			upsertAppGridConfigLine(freshEditor.getRange(freshFrom, freshTo), config),
+			freshFrom,
+			freshTo
+		);
+	});
 }
 
 /** The open editor, if any, for a note at `path` — a `link-grid` block is only editable while one exists. */
