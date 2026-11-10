@@ -276,14 +276,22 @@ function attachConfigButton(
 }
 
 /**
- * Opens the appearance panel for this block and, on every change, writes
- * the result back as the block's own first line — same `getSectionInfo`
- * lookup as {@link openAddPanel}, reading the body fresh at click time so
- * the panel starts from whatever the block actually holds rather than its
- * state when the block was last rendered. Each edit re-reads the body (and
- * re-finds the editor/section) rather than closing over the first lookup,
- * since the previous write already shifted line numbers and re-rendered the
- * block the panel's own anchor sits on top of.
+ * Opens the appearance panel for this block. Every control applies live via
+ * CSS as the user drags through options (`applyLiveConfig`, driven by
+ * `onChange`) and the source line is written back only once, when the panel
+ * closes (`persistConfig`, driven by `onClose`) — same `getSectionInfo`
+ * lookup as {@link openAddPanel}, reading the body fresh at click time so the
+ * panel starts from whatever the block actually holds rather than its state
+ * when the block was last rendered.
+ *
+ * Writing on every intermediate change (rather than once at close) was tried
+ * and reverted: each write re-renders the block from the post-processor up,
+ * which is the only way Obsidian picks up the new source, but it also tears
+ * down the live DOM `applyLiveConfig` had just updated and replaces it with a
+ * freshly built one — visible as a flash/jump on every click instead of the
+ * smooth CSS transition `applyLiveConfig` gives while the panel is open.
+ * Deferring the write to close keeps the editor (and the block) untouched for
+ * the whole interaction, so nothing re-renders until the user is done.
  */
 function openConfigPanel(
 	button: HTMLElement,
@@ -315,11 +323,10 @@ function openConfigPanel(
 		if (!freshEditor || !freshInfo) return;
 		const freshFrom = { line: freshInfo.lineStart + 1, ch: 0 };
 		const freshTo = { line: freshInfo.lineEnd, ch: 0 };
-		freshEditor.replaceRange(
-			upsertAppGridConfigLine(freshEditor.getRange(freshFrom, freshTo), next),
-			freshFrom,
-			freshTo
-		);
+		const freshBody = freshEditor.getRange(freshFrom, freshTo);
+		const nextBody = upsertAppGridConfigLine(freshBody, next);
+		if (nextBody === freshBody) return;
+		freshEditor.replaceRange(nextBody, freshFrom, freshTo);
 	};
 	showAppConfigPanel(button, config, applyLiveConfig, persistConfig);
 }
