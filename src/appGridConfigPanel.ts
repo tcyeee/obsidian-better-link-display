@@ -162,6 +162,7 @@ export function showAppConfigPanel(
 	let gapKey = closestSizeKey(initial.gap, GAP_SIZES);
 	let backgroundKey = backgroundKeyOf(initial.background);
 	let appBackground = initial.appBackground;
+	let iconBackground = initial.iconBackground;
 
 	const emit = (): void =>
 		onChange({
@@ -169,6 +170,7 @@ export function showAppConfigPanel(
 			gap: GAP_SIZES[gapKey],
 			background: backgroundKey === "none" ? null : BACKGROUND_COLORS[backgroundKey],
 			appBackground,
+			iconBackground,
 		});
 
 	const panel = doc.body.createDiv({ cls: PANEL_CLASS });
@@ -227,6 +229,16 @@ export function showAppConfigPanel(
 		appBackground,
 		(value) => {
 			appBackground = value;
+			emit();
+		}
+	);
+	buildToggleRow(
+		appearanceSection,
+		t("appGrid.config.iconBackground"),
+		undefined,
+		iconBackground,
+		(value) => {
+			iconBackground = value;
 			emit();
 		}
 	);

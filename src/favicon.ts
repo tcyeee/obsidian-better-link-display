@@ -1,6 +1,7 @@
 import { arrayBufferToBase64, requestUrl } from "obsidian";
 import { isSafeFaviconSrc } from "./urlScan";
 import { logWarn } from "./log";
+import { iconPlateColor } from "./iconColor";
 import { siteInitial } from "./siteInitial";
 
 /**
@@ -236,27 +237,28 @@ async function decodeImage(dataUrl: string): Promise<HTMLImageElement | null> {
 	}
 }
 
-/** Mixed toward white so the result reads as a tint rather than the icon's own tone. */
-const TILE_BACKGROUND_LIGHTEN = 0.6;
-
 /**
- * An unweighted average over `img`'s non-transparent pixels, lightened, for
- * the app-grid tile's "APP background colour" option. `img` is already in
- * the DOM with its `src` set by the caller — a cached icon's `src` is an
- * `app://` resource path rather than a `data:` URL, and nothing here assumes
- * that origin can't someday taint the canvas it's drawn onto, hence the two
- * try/catches: a tile simply keeps no tint rather than this throwing.
+ * The 6-digit hex (no `#`) for the plate behind one bookmark-grid icon, for
+ * the "Icon background colour" option: this half turns the icon's PNG bytes
+ * into pixels, and `iconColor.ts` turns those into the colour (see
+ * {@link iconPlateColor}).
+ *
+ * Takes bytes rather than the `<img>` already on screen, which is the obvious
+ * thing to reach for and cannot work, in two compounding ways. A tile's image
+ * starts out holding the grey initial-letter placeholder {@link fallbackIcon}
+ * draws, which samples perfectly well — as grey. And once the real icon
+ * replaces it, that `src` is an `app://` resource path served from a different
+ * host than the page, so the image taints any canvas it is drawn onto and
+ * `getImageData()` throws instead of answering. Between the two, the plate
+ * took the placeholder's grey and then kept it, whatever the icon looked like.
+ * Decoding the bytes through a `data:` URL is same-origin, so nothing taints.
  */
-export async function averageIconColor(img: HTMLImageElement): Promise<string | null> {
-	try {
-		if (!img.complete) await img.decode();
-	} catch (error) {
-		logWarn("favicon: image failed to decode while sampling its colour", error);
-		return null;
-	}
+export async function iconPlateColorOf(bytes: ArrayBuffer): Promise<string | null> {
+	const image = await decodeImage(`data:image/png;base64,${arrayBufferToBase64(bytes)}`);
+	if (!image) return null;
 
-	const width = img.naturalWidth;
-	const height = img.naturalHeight;
+	const width = image.naturalWidth;
+	const height = image.naturalHeight;
 	if (width < 1 || height < 1) return null;
 
 	const canvas = createEl("canvas");
@@ -266,29 +268,13 @@ export async function averageIconColor(img: HTMLImageElement): Promise<string | 
 	if (!context) return null;
 
 	try {
-		context.drawImage(img, 0, 0);
-		const { data } = context.getImageData(0, 0, width, height);
-
-		let r = 0;
-		let g = 0;
-		let b = 0;
-		let count = 0;
-		for (let i = 0; i < data.length; i += 4) {
-			if (data[i + 3] < 16) continue; // skip near-transparent pixels
-			r += data[i];
-			g += data[i + 1];
-			b += data[i + 2];
-			count++;
-		}
-		if (count === 0) return null;
-
-		const lighten = (sum: number) =>
-			Math.round(sum / count + (255 - sum / count) * TILE_BACKGROUND_LIGHTEN);
-		return [lighten(r), lighten(g), lighten(b)]
-			.map((channel) => Math.min(255, Math.max(0, channel)).toString(16).padStart(2, "0"))
-			.join("");
+		context.drawImage(image, 0, 0);
+		return iconPlateColor(context.getImageData(0, 0, width, height).data);
 	} catch (error) {
-		logWarn("favicon: could not sample icon colour (possibly a tainted canvas)", error);
+		// Not reachable through a tainted canvas any more (see above), but a
+		// pathological image shouldn't take the tile down with it: no plate is
+		// a fine outcome, an unhandled rejection is not.
+		logWarn("favicon: could not sample icon colour", error);
 		return null;
 	}
 }

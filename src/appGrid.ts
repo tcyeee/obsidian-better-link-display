@@ -21,7 +21,7 @@ import {
 } from "./appGridScan";
 import { AppGridCache } from "./appGridCache";
 import { lookupFailureMessage, SiteLookup } from "./lookup";
-import { averageIconColor, fallbackIcon, fetchIconPngBytes } from "./favicon";
+import { fallbackIcon, fetchIconPngBytes, iconPlateColorOf } from "./favicon";
 import { showAppAddPanel } from "./appGridAddPanel";
 import { showAppConfigPanel } from "./appGridConfigPanel";
 import { AppGridEditNameModal } from "./appGridEditNameModal";
@@ -31,7 +31,9 @@ const GRID_CLASS = "better-link-display-app-grid";
 const GRID_BACKGROUND_CLASS = "better-link-display-app-grid-bg";
 const TILE_CLASS = "better-link-display-app-tile";
 const TILE_PENDING_CLASS = "better-link-display-app-tile-pending";
-const TILE_AUTO_BACKGROUND_CLASS = "better-link-display-app-tile-autobg";
+const TILE_BACKGROUND_CLASS = "better-link-display-app-tile-bg";
+/** On the icon itself, not the tile: the plate colour is sampled per icon, see {@link syncIconBackground}. */
+const ICON_BACKGROUND_CLASS = "better-link-display-app-icon-autobg";
 const ADD_TILE_CLASS = "better-link-display-app-add";
 /** Only shown once the grid already has tiles — see {@link buildAddTile}. */
 const ADD_TILE_TRAILING_CLASS = "better-link-display-app-add-trailing";
@@ -83,7 +85,7 @@ export function renderAppGrid(
 	const entries = parseAppGridSource(source);
 	entries.forEach((entry, index) => {
 		const tile = buildTile(grid, entry);
-		void syncAutoBackground(tile, config, child);
+		applyTileAppearance(tile, config);
 		void resolveTile(tile, entry, lookup, cache, child, config);
 		attachContextMenu(tile, entry, index, { app, ctx, el, lookup, cache, child, config });
 	});
@@ -96,8 +98,8 @@ export function renderAppGrid(
  * The size/spacing/area-background options, applied to the grid container
  * itself: `--better-link-display-app-icon-size` and the two class-driven
  * properties cascade down to every tile in `styles.css` without each one
- * needing its own `setCssProps` call, unlike the per-tile tint in
- * {@link syncAutoBackground}, which genuinely differs tile to tile.
+ * needing its own `setCssProps` call, unlike the per-icon plate colour in
+ * {@link syncIconBackground}, which genuinely differs tile to tile.
  */
 function applyAppearance(grid: HTMLElement, config: AppGridConfig): void {
 	grid.setCssProps({
@@ -109,23 +111,45 @@ function applyAppearance(grid: HTMLElement, config: AppGridConfig): void {
 }
 
 /**
- * The "APP background colour" option: tints a tile from its own icon's
- * average colour rather than any single value shared by the whole grid, so
- * unlike {@link applyAppearance} this runs per tile and again every time a
- * tile's icon image changes (fallback → cached → freshly fetched) — see the
- * call sites in {@link resolveTile} and {@link updateTile}.
+ * The two per-tile appearance options, as classes only — the fixed colour
+ * behind a tile ("Bookmark background") is drawn entirely in `styles.css`,
+ * since nothing about it varies tile to tile. The icon plate's colour does,
+ * and arrives separately through {@link syncIconBackground}, which is why this
+ * runs on first render while the colour lands whenever the sampling answers —
+ * nothing about the icon's box changes either way.
  */
-async function syncAutoBackground(
+function applyTileAppearance(tile: Tile, config: AppGridConfig): void {
+	tile.anchor.toggleClass(TILE_BACKGROUND_CLASS, config.appBackground);
+	tile.icon.toggleClass(ICON_BACKGROUND_CLASS, config.iconBackground);
+}
+
+/**
+ * The "Icon background colour" option: tints the plate behind one icon from
+ * that icon's own dominant colour rather than any single value shared by the
+ * whole grid, so unlike {@link applyAppearance} this runs per tile, and only
+ * once a *real* icon exists — see the call sites in {@link resolveTile} and
+ * {@link updateTile}, and {@link iconPlateColorOf} for why the bytes are what
+ * gets sampled rather than the image already on screen.
+ *
+ * `readPng` is a callback rather than the bytes themselves so that nothing is
+ * read off disk for a grid whose tiles aren't tinted at all: the cached-icon
+ * path has only the resource path in hand and would otherwise have to fetch
+ * the file back before finding out the option is off.
+ */
+async function syncIconBackground(
 	tile: Tile,
 	config: AppGridConfig,
-	child: AppGridRenderChild
+	child: AppGridRenderChild,
+	readPng: () => Promise<ArrayBuffer | null>
 ): Promise<void> {
-	tile.anchor.toggleClass(TILE_AUTO_BACKGROUND_CLASS, config.appBackground);
-	if (!config.appBackground) return;
+	if (!config.iconBackground) return;
 
-	const color = await averageIconColor(tile.icon);
+	const bytes = await readPng();
+	if (child.cancelled || !bytes) return;
+
+	const color = await iconPlateColorOf(bytes);
 	if (child.cancelled || !color) return;
-	tile.anchor.setCssProps({ "--better-link-display-app-tile-bg": `#${color}` });
+	tile.icon.setCssProps({ "--better-link-display-app-icon-bg": `#${color}` });
 }
 
 /**
@@ -333,7 +357,7 @@ async function resolveTile(
 
 	if (cachedIconPath) {
 		tile.icon.src = cachedIconPath;
-		void syncAutoBackground(tile, config, child);
+		void syncIconBackground(tile, config, child, () => cache.readIconBytes(url));
 	}
 	if (!entry.name && cachedAppName) tile.label.setText(cachedAppName);
 
@@ -361,7 +385,7 @@ async function resolveTile(
 				const freshPath = await cache.getIconResourcePath(url);
 				if (!child.cancelled && freshPath) {
 					tile.icon.src = freshPath;
-					void syncAutoBackground(tile, config, child);
+					void syncIconBackground(tile, config, child, () => Promise.resolve(bytes));
 				}
 			}
 		}
@@ -581,7 +605,7 @@ async function updateTile(
 	const freshPath = await context.cache.getIconResourcePath(url);
 	if (context.child.cancelled || !freshPath) return;
 	tile.icon.src = freshPath;
-	void syncAutoBackground(tile, context.config, context.child);
+	void syncIconBackground(tile, context.config, context.child, () => Promise.resolve(bytes));
 
 	writeAppGridBody(context, (body) => setAppGridEntryName(body, index, outcome.info.appName));
 }

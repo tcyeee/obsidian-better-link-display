@@ -106,6 +106,7 @@ const en = {
 	"appGrid.config.background.beige": "Light dusty rose",
 	"appGrid.config.appearance": "Appearance",
 	"appGrid.config.appBackground": "Bookmark background",
+	"appGrid.config.iconBackground": "Icon background",
 } as const;
 
 export type TranslationKey = keyof typeof en;
@@ -195,6 +196,7 @@ const zh: Record<TranslationKey, string> = {
 	"appGrid.config.background.beige": "浅豆沙色",
 	"appGrid.config.appearance": "外观",
 	"appGrid.config.appBackground": "书签背景颜色",
+	"appGrid.config.iconBackground": "图标背景颜色",
 };
 
 const TABLES: Record<Language, Record<TranslationKey, string>> = { en, zh };

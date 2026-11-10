@@ -40,6 +40,27 @@ export class AppGridCache {
 		return this.adapter.getResourcePath(path);
 	}
 
+	/**
+	 * The cached PNG's own bytes, for the icon-plate colour sampling in
+	 * `appGrid.ts`. Separate from {@link getIconResourcePath} because an
+	 * `app://` resource path is all an `<img>` needs, but it is served from a
+	 * different host than the page, so an image loaded from one *taints* any
+	 * canvas it is drawn onto and `getImageData()` then throws — the colour
+	 * has to come from the bytes instead.
+	 */
+	async readIconBytes(url: string): Promise<ArrayBuffer | null> {
+		const hostname = hostnameOf(url);
+		if (!hostname) return null;
+		const path = this.iconPath(hostname);
+		if (!(await this.adapter.exists(path))) return null;
+		try {
+			return await this.adapter.readBinary(path);
+		} catch (error) {
+			logWarn("app-grid: cached icon could not be read back for colour sampling", error);
+			return null;
+		}
+	}
+
 	async writeIcon(url: string, bytes: ArrayBuffer): Promise<void> {
 		const hostname = hostnameOf(url);
 		if (!hostname) return;
