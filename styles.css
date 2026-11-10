@@ -855,9 +855,9 @@ a.external-link.better-link-display-app-tile-drop-after::after {
 .better-link-display-app-config-panel-icon-size-group[data-icon-size="l"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(200%); }
 .better-link-display-app-config-panel-icon-size-group[data-icon-size="xl"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(300%); }
 
-.better-link-display-app-config-panel-icon-size-radio,
-.better-link-display-app-config-panel-gap-radio,
-.better-link-display-app-config-panel-background-radio {
+.better-link-display-app-config-panel button.better-link-display-app-config-panel-icon-size-radio,
+.better-link-display-app-config-panel button.better-link-display-app-config-panel-gap-radio,
+.better-link-display-app-config-panel button.better-link-display-app-config-panel-background-radio {
 	position: relative;
 	display: flex;
 	align-items: center;
@@ -866,8 +866,7 @@ a.external-link.better-link-display-app-tile-drop-after::after {
 	min-width: 0;
 	padding: 0;
 	border: 0;
-	background: transparent !important;
-	background-color: transparent !important;
+	background: transparent;
 	box-shadow: none;
 	appearance: none;
 	text-align: center;
@@ -884,8 +883,7 @@ a.external-link.better-link-display-app-tile-drop-after::after {
 .better-link-display-app-config-panel button.better-link-display-app-config-panel-icon-size-radio:hover,
 .better-link-display-app-config-panel button.better-link-display-app-config-panel-gap-radio:hover,
 .better-link-display-app-config-panel button.better-link-display-app-config-panel-background-radio:hover {
-	background: transparent !important;
-	background-color: transparent !important;
+	background: transparent;
 	color: var(--text-muted);
 }
 

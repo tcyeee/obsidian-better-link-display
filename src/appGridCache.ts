@@ -161,7 +161,7 @@ export class AppGridCache {
 		const path = this.appNamesPath();
 		if (await this.adapter.exists(path)) {
 			try {
-				const parsed = JSON.parse(await this.adapter.read(path));
+				const parsed: unknown = JSON.parse(await this.adapter.read(path));
 				this.appNames = isAppNameMap(parsed) ? parsed : {};
 			} catch (error) {
 				logWarn(`app-grid: ${APP_NAMES_FILE} could not be parsed — starting fresh`, error);

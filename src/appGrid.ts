@@ -13,7 +13,6 @@ import {
 	AppGridEntry,
 	buildAppGridInsertion,
 	moveAppGridLine,
-	normalizeAppGridUrl,
 	parseAppGridConfig,
 	parseAppGridSource,
 	removeAppGridLine,

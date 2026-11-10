@@ -12,11 +12,6 @@
  */
 const PREFIX = "[better-link-display]";
 
-export function logInfo(message: string, detail?: unknown): void {
-	if (detail === undefined) console.info(`${PREFIX} ${message}`);
-	else console.info(`${PREFIX} ${message}`, detail);
-}
-
 export function logError(message: string, detail?: unknown): void {
 	if (detail === undefined) console.error(`${PREFIX} ${message}`);
 	else console.error(`${PREFIX} ${message}`, detail);
