@@ -439,6 +439,9 @@ interface RegisteredTile {
  */
 const tileRegistry = new WeakMap<HTMLAnchorElement, RegisteredTile>();
 
+/** The tile whose context menu was opened most recently. */
+let selectedTile: HTMLAnchorElement | null = null;
+
 /** One `contextmenu` capture listener is ever installed per window — see {@link ensureContextMenuCapture}. */
 const captureInstalled = new WeakSet<Window>();
 
@@ -513,6 +516,9 @@ function ensureContextMenuCapture(win: Window): void {
 				}
 				const entry = tileRegistry.get(anchor);
 				if (!entry) return;
+				selectedTile?.removeClass("better-link-display-app-tile-selected");
+				selectedTile = anchor;
+				anchor.addClass("better-link-display-app-tile-selected");
 				event.preventDefault();
 				event.stopImmediatePropagation();
 				openTileMenu(entry, event.clientX, event.clientY);
@@ -552,7 +558,12 @@ function openTileMenu(entry: RegisteredTile, x: number, y: number): void {
 			},
 		],
 		x,
-		y
+		y,
+		() => {
+			if (selectedTile !== tile.anchor) return;
+			tile.anchor.removeClass("better-link-display-app-tile-selected");
+			selectedTile = null;
+		}
 	);
 }
 
