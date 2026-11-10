@@ -2,10 +2,11 @@ import { t } from "./i18n";
 import { AppGridConfig } from "./appGridScan";
 
 type SizeKey = "s" | "m" | "l";
+type IconSizeKey = "xs" | "s" | "m" | "l" | "xl";
 type BackgroundKey = "none" | "gray" | "beige";
 
 /** The only icon/gap px values the panel offers — a hand-edited block may hold anything else, see appGridScan.ts. */
-const ICON_SIZES: Record<SizeKey, number> = { s: 24, m: 32, l: 40 };
+const ICON_SIZES: Record<IconSizeKey, number> = { xs: 16, s: 24, m: 32, l: 40, xl: 48 };
 const GAP_SIZES: Record<SizeKey, number> = { s: 8, m: 12, l: 16 };
 /** The only two area-background colours the panel offers, as 6-digit hex with no `#`. */
 const BACKGROUND_COLORS: Record<Exclude<BackgroundKey, "none">, string> = {
@@ -13,8 +14,8 @@ const BACKGROUND_COLORS: Record<Exclude<BackgroundKey, "none">, string> = {
 	beige: "f0ddd3",
 };
 
-function closestSizeKey(px: number, table: Record<SizeKey, number>): SizeKey {
-	return (Object.keys(table) as SizeKey[]).reduce((closest, key) =>
+function closestSizeKey<K extends string>(px: number, table: Record<K, number>): K {
+	return (Object.keys(table) as K[]).reduce((closest, key) =>
 		Math.abs(table[key] - px) < Math.abs(table[closest] - px) ? key : closest
 	);
 }
@@ -80,27 +81,44 @@ function buildSegmentGroup<K extends string>(
 	dataKey: string,
 	options: { key: K; label: string }[],
 	initialKey: K,
-	radioGroupName: string,
 	onChange: (key: K) => void
 ): void {
 	const group = container.createDiv({ cls: `${classPrefix}-group` });
+	group.setAttribute("role", "radiogroup");
 	group.setAttribute(`data-${dataKey}`, initialKey);
 	group.createDiv({ cls: `${classPrefix}-slider` });
 
 	for (const option of options) {
 		const label = group.createEl("label", { cls: `${classPrefix}-radio` });
-		const input = label.createEl("input", { cls: `${classPrefix}-radio-input` });
-		input.type = "radio";
-		input.name = radioGroupName;
-		input.value = option.key;
-		input.checked = option.key === initialKey;
+		label.setAttribute("role", "radio");
+		label.setAttribute("aria-checked", String(option.key === initialKey));
+		label.tabIndex = option.key === initialKey ? 0 : -1;
 		label.createSpan({ cls: `${classPrefix}-radio-text`, text: option.label });
 
-		input.addEventListener("change", () => {
-			if (!input.checked) return;
+		label.addEventListener("click", () => {
+			for (const sibling of Array.from(group.querySelectorAll<HTMLElement>(`[role="radio"]`))) {
+				sibling.setAttribute("aria-checked", String(sibling === label));
+				sibling.tabIndex = sibling === label ? 0 : -1;
+			}
 			group.setAttribute(`data-${dataKey}`, option.key);
 			onChange(option.key);
 		});
+		label.addEventListener("keydown", (event: KeyboardEvent) => {
+			if (event.key === " " || event.key === "Enter") {
+				event.preventDefault();
+				label.click();
+				return;
+			}
+			if (!["ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown"].includes(event.key)) return;
+			event.preventDefault();
+			const index = options.findIndex(({ key }) => key === option.key);
+			const delta = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 1;
+			const next = options[(index + delta + options.length) % options.length];
+			const target = group.querySelector<HTMLElement>(`[role="radio"][data-option="${next.key}"]`);
+			target?.click();
+			target?.focus();
+		});
+		label.setAttribute("data-option", option.key);
 	}
 }
 
@@ -148,7 +166,8 @@ function buildToggleRow(
 export function showAppConfigPanel(
 	anchor: HTMLElement,
 	initial: AppGridConfig,
-	onChange: (config: AppGridConfig) => void
+	onChange: (config: AppGridConfig) => void,
+	onClose: (config: AppGridConfig) => void = () => undefined
 ): void {
 	const reopening = activePanel?.anchor === anchor;
 	activePanel?.close();
@@ -172,10 +191,20 @@ export function showAppConfigPanel(
 			appBackground,
 			iconBackground,
 		});
+	const currentConfig = (): AppGridConfig => ({
+		iconSize: ICON_SIZES[iconKey],
+		gap: GAP_SIZES[gapKey],
+		background: backgroundKey === "none" ? null : BACKGROUND_COLORS[backgroundKey],
+		appBackground,
+		iconBackground,
+	});
 
 	const panel = doc.body.createDiv({ cls: PANEL_CLASS });
-	const uid = Math.random().toString(36).slice(2);
-	const SIZE_OPTIONS = (["s", "m", "l"] as SizeKey[]).map((key) => ({
+	const ICON_SIZE_OPTIONS = (["xs", "s", "m", "l", "xl"] as IconSizeKey[]).map((key) => ({
+		key,
+		label: t(`appGrid.config.size.${key}`),
+	}));
+	const GAP_SIZE_OPTIONS = (["s", "m", "l"] as SizeKey[]).map((key) => ({
 		key,
 		label: t(`appGrid.config.size.${key}`),
 	}));
@@ -186,9 +215,8 @@ export function showAppConfigPanel(
 		iconSizeSection,
 		`${PANEL_CLASS}-icon-size`,
 		"icon-size",
-		SIZE_OPTIONS,
+		ICON_SIZE_OPTIONS,
 		iconKey,
-		`icon-size-${uid}`,
 		(key) => {
 			iconKey = key;
 			emit();
@@ -197,7 +225,7 @@ export function showAppConfigPanel(
 
 	const gapSection = panel.createDiv({ cls: SECTION_CLASS });
 	gapSection.createDiv({ cls: SECTION_TITLE_CLASS, text: t("appGrid.config.gap") });
-	buildSegmentGroup(gapSection, `${PANEL_CLASS}-gap`, "gap", SIZE_OPTIONS, gapKey, `gap-${uid}`, (key) => {
+	buildSegmentGroup(gapSection, `${PANEL_CLASS}-gap`, "gap", GAP_SIZE_OPTIONS, gapKey, (key) => {
 		gapKey = key;
 		emit();
 	});
@@ -213,7 +241,6 @@ export function showAppConfigPanel(
 			label: t(`appGrid.config.background.${key}`),
 		})),
 		backgroundKey,
-		`background-${uid}`,
 		(key) => {
 			backgroundKey = key;
 			emit();
@@ -245,6 +272,7 @@ export function showAppConfigPanel(
 
 	const abortController = new AbortController();
 	function close(): void {
+		onClose(currentConfig());
 		abortController.abort();
 		panel.remove();
 		if (activePanel?.close === close) activePanel = null;

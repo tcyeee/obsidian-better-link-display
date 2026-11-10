@@ -66,6 +66,17 @@ export function setAppGridEntryName(source: string, index: number, name: string)
 	return lines.join("\n");
 }
 
+/** Persist a looked-up name only while the indexed line is still that bare URL. */
+export function setAppGridEntryNameIfBare(source: string, index: number, url: string, name: string): string {
+	let seen = 0;
+	const lines = source.split("\n").map((line) => {
+		const entry = parseEntryLine(line);
+		if (!entry || seen++ !== index || entry.name !== null || entry.url !== url) return line;
+		return `[${escapeEntryName(name.trim())}](${entry.url})`;
+	});
+	return lines.join("\n");
+}
+
 /** One line, parsed as either form — the shared predicate behind every function above. */
 function parseEntryLine(line: string): AppGridEntry | null {
 	const trimmed = line.trim();
