@@ -17,7 +17,7 @@ extension never needs the user's login session/cookie.
 
 | Environment | Base URL |
 |---|---|
-| Production | `https://bookmakify.cc/api` |
+| Production | `https://bookmarkify.cc/api` |
 | Local dev | `http://localhost:8001` |
 
 All paths below are relative to the base URL — e.g. in production, `GET /extension/site-info`
