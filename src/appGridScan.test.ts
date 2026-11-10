@@ -215,65 +215,109 @@ test("parseAppGridConfig returns defaults when there is no config line", () => {
 });
 
 test("parseAppGridConfig reads every field from a well-formed line", () => {
-	const source = "icon=40;gap=16;bg=e9e9e9;appbg=1;;\nhttps://example.com";
+	const source = "icon=40;gap=16;bg=e9e9e9;appbg=1;iconbg=1;;\nhttps://example.com";
 	assert.deepEqual(parseAppGridConfig(source), {
 		iconSize: 40,
 		gap: 16,
 		background: "e9e9e9",
 		appBackground: true,
+		iconBackground: true,
 	});
 });
 
 test("parseAppGridConfig lowercases the background hex", () => {
-	const source = "icon=32;gap=12;bg=E9E9E9;appbg=0;;";
+	const source = "icon=32;gap=12;bg=E9E9E9;appbg=0;iconbg=0;;";
 	assert.equal(parseAppGridConfig(source).background, "e9e9e9");
 });
 
 test("parseAppGridConfig falls back to defaults for malformed fields", () => {
-	const source = "icon=0;gap=-5;bg=zzzzzz;appbg=yes;;";
+	const source = "icon=0;gap=-5;bg=zzzzzz;appbg=yes;iconbg=yes;;";
 	assert.deepEqual(parseAppGridConfig(source), DEFAULT_APP_GRID_CONFIG);
 });
 
 test("parseAppGridConfig clamps a pathologically large px value", () => {
-	const source = "icon=999999;gap=999999;bg=;appbg=0;;";
+	const source = "icon=999999;gap=999999;bg=;appbg=0;iconbg=0;;";
 	assert.deepEqual(parseAppGridConfig(source), {
 		iconSize: 96,
 		gap: 64,
 		background: null,
 		appBackground: false,
+		iconBackground: false,
 	});
 });
 
 test("parseAppGridConfig requires the trailing ;; marker", () => {
-	assert.deepEqual(parseAppGridConfig("icon=40;gap=16;bg=e9e9e9;appbg=1;"), DEFAULT_APP_GRID_CONFIG);
+	assert.deepEqual(
+		parseAppGridConfig("icon=40;gap=16;bg=e9e9e9;appbg=1;iconbg=1;"),
+		DEFAULT_APP_GRID_CONFIG
+	);
 });
 
 test("serializeAppGridConfig round-trips through parseAppGridConfig", () => {
-	const config: AppGridConfig = { iconSize: 24, gap: 8, background: "f0ddd3", appBackground: true };
+	const config: AppGridConfig = {
+		iconSize: 24,
+		gap: 8,
+		background: "f0ddd3",
+		appBackground: true,
+		iconBackground: true,
+	};
 	assert.deepEqual(parseAppGridConfig(serializeAppGridConfig(config)), config);
 });
 
 test("serializeAppGridConfig writes an empty bg field when there is no background", () => {
 	assert.equal(
-		serializeAppGridConfig({ iconSize: 32, gap: 12, background: null, appBackground: false }),
-		"icon=32;gap=12;bg=;appbg=0;;"
+		serializeAppGridConfig({
+			iconSize: 32,
+			gap: 12,
+			background: null,
+			appBackground: false,
+			iconBackground: false,
+		}),
+		"icon=32;gap=12;bg=;appbg=0;iconbg=0;;"
 	);
 });
 
 test("upsertAppGridConfigLine inserts a config line when the block has none yet", () => {
 	const source = "https://example.com\nhttps://example.org";
-	const config: AppGridConfig = { iconSize: 24, gap: 8, background: null, appBackground: false };
+	const config: AppGridConfig = {
+		iconSize: 24,
+		gap: 8,
+		background: null,
+		appBackground: false,
+		iconBackground: false,
+	};
 	assert.equal(
 		upsertAppGridConfigLine(source, config),
-		"icon=24;gap=8;bg=;appbg=0;;\nhttps://example.com\nhttps://example.org"
+		"icon=24;gap=8;bg=;appbg=0;iconbg=0;;\nhttps://example.com\nhttps://example.org"
 	);
 });
 
 test("upsertAppGridConfigLine replaces an existing config line in place", () => {
-	const source = "icon=32;gap=12;bg=;appbg=0;;\nhttps://example.com";
-	const config: AppGridConfig = { iconSize: 40, gap: 16, background: "e9e9e9", appBackground: true };
+	const source = "icon=32;gap=12;bg=;appbg=0;iconbg=0;;\nhttps://example.com";
+	const config: AppGridConfig = {
+		iconSize: 40,
+		gap: 16,
+		background: "e9e9e9",
+		appBackground: true,
+		iconBackground: true,
+	};
 	assert.equal(
 		upsertAppGridConfigLine(source, config),
-		"icon=40;gap=16;bg=e9e9e9;appbg=1;;\nhttps://example.com"
+		"icon=40;gap=16;bg=e9e9e9;appbg=1;iconbg=1;;\nhttps://example.com"
 	);
+});
+
+/*
+ * A block saved before the "Icon background colour" option existed. Its
+ * config line is still read field by field rather than rejected for being
+ * short, and the missing field reads as off — see `serializeAppGridConfig`.
+ */
+test("parseAppGridConfig reads a config line written before the iconbg field existed", () => {
+	assert.deepEqual(parseAppGridConfig("icon=40;gap=16;bg=e9e9e9;appbg=1;;"), {
+		iconSize: 40,
+		gap: 16,
+		background: "e9e9e9",
+		appBackground: true,
+		iconBackground: false,
+	});
 });

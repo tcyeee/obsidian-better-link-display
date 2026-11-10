@@ -141,8 +141,10 @@ export interface AppGridConfig {
 	gap: number;
 	/** 6-digit hex (no `#`), or `null` for no area background — the only two states the dialog offers are gray and beige, but a hand-edited block is read literally rather than snapped to one of them. */
 	background: string | null;
-	/** Whether each tile tints its own background from its icon's average colour — see `appGrid.ts`'s `averageIconColor()`. */
+	/** Whether each tile sits on a card of its own — one fixed colour for the whole grid, drawn in `styles.css`, unlike {@link iconBackground}. */
 	appBackground: boolean;
+	/** Whether each icon gets a plate tinted from *its own* dominant colour — the one appearance option no stylesheet can know in advance, see `appGrid.ts`'s `syncIconBackground()`. */
+	iconBackground: boolean;
 }
 
 export const DEFAULT_APP_GRID_CONFIG: AppGridConfig = {
@@ -150,6 +152,7 @@ export const DEFAULT_APP_GRID_CONFIG: AppGridConfig = {
 	gap: 12,
 	background: null,
 	appBackground: false,
+	iconBackground: false,
 };
 
 const HEX6 = /^[0-9a-f]{6}$/i;
@@ -185,11 +188,18 @@ export function parseAppGridConfig(source: string): AppGridConfig {
 		gap: clampPx(fields.get("gap"), DEFAULT_APP_GRID_CONFIG.gap, 64),
 		background: background && HEX6.test(background) ? background.toLowerCase() : null,
 		appBackground: fields.get("appbg") === "1",
+		iconBackground: fields.get("iconbg") === "1",
 	};
 }
 
+/**
+ * New fields are appended rather than slotted in, and every one of them is
+ * read as "absent means off" above — a block written before the field existed
+ * has no `iconbg=` pair and must keep rendering exactly as it did, not pick up
+ * a new plate behind every icon.
+ */
 export function serializeAppGridConfig(config: AppGridConfig): string {
-	return `icon=${config.iconSize};gap=${config.gap};bg=${config.background ?? ""};appbg=${config.appBackground ? "1" : "0"};;`;
+	return `icon=${config.iconSize};gap=${config.gap};bg=${config.background ?? ""};appbg=${config.appBackground ? "1" : "0"};iconbg=${config.iconBackground ? "1" : "0"};;`;
 }
 
 /**

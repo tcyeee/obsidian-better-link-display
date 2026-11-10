@@ -409,25 +409,26 @@ a.external-link.better-link-display-app-tile:hover {
 }
 
 /*
- * The "APP background colour" option: `--better-link-display-app-tile-bg` is
- * set per tile by `syncAutoBackground()` in appGrid.ts, sampled from that
- * tile's own icon — nothing here can know the value in advance, unlike the
- * grid's own area background above. Falls back to `transparent` so a tile
- * whose colour hasn't been sampled yet (or couldn't be, e.g. a tainted
- * canvas) never shows a stale or missing custom property as a visible gap.
+ * The "Bookmark background" option: one card colour for every tile in the
+ * grid, a fixed hex like the area background above rather than an Obsidian
+ * theme variable, since both are a value the user picked in the config panel
+ * rather than a styling choice this file makes. It is written here instead of
+ * being set per tile by JS (as it once was, when it was sampled from each
+ * tile's own icon) because nothing about it varies tile to tile — what does
+ * is now the icon plate below.
  */
-.better-link-display-app-tile-autobg {
-	background-color: var(--better-link-display-app-tile-bg, transparent);
+.better-link-display-app-tile-bg {
+	background-color: #efefef;
 }
 
 /*
- * Live Preview only: an autobg tile already carries its own sampled tint, so
- * the generic hover highlight above would just paint over it on every pass of
- * the pointer. Reading view keeps the plain hover feedback — there the tile is
- * only ever a link to follow, with nothing of its own to protect.
+ * Live Preview only: a tile with its own card colour would otherwise have the
+ * generic hover highlight painted over it on every pass of the pointer.
+ * Reading view keeps the plain hover feedback — there the tile is only ever a
+ * link to follow, with nothing of its own to protect.
  */
-.cm-editor a.external-link.better-link-display-app-tile.better-link-display-app-tile-autobg:hover {
-	background-color: var(--better-link-display-app-tile-bg, transparent);
+.cm-editor a.external-link.better-link-display-app-tile.better-link-display-app-tile-bg:hover {
+	background-color: #efefef;
 }
 
 /*
@@ -445,11 +446,36 @@ a.external-link.better-link-display-app-tile:hover {
 	object-fit: contain;
 }
 
-/* One line, ellipsised rather than wrapped — a wrapped title would misalign tiles in the same row. */
+/*
+ * The "Icon background colour" option: a colour laid under one icon, sampled
+ * from that icon's own dominant colour — `--better-link-display-app-icon-bg`
+ * is set per icon by `syncIconBackground()` in appGrid.ts, so nothing here can
+ * know the value in advance, unlike the two fixed colours above. It falls back
+ * to `transparent` so an icon whose colour hasn't been sampled yet (or
+ * couldn't be) shows no colour rather than a stale or missing custom property
+ * as a visible box.
+ *
+ * Background only — deliberately no padding and no size of its own, so
+ * turning the option on cannot move or resize the icon. (It also means an
+ * icon that is an opaque square covers the colour completely: the rule is
+ * only visible through whatever the icon leaves transparent, which is the
+ * intent.) The box and its radius stay exactly as the rule above sets them.
+ */
+.better-link-display-app-tile img.better-link-display-app-icon-autobg {
+	background-color: var(--better-link-display-app-icon-bg, transparent);
+}
+
+/*
+ * One line, ellipsised rather than wrapped — a wrapped title would misalign
+ * tiles in the same row. A fixed 13px rather than `--font-text-size`: a tile's
+ * label is a caption under an icon, not body text, and at the theme's reading
+ * size it crowded the icon it belongs to and ellipsised names that fit at this
+ * one.
+ */
 .better-link-display-app-tile-label {
 	max-width: 100%;
 	overflow: hidden;
-	font-size: var(--font-text-size);
+	font-size: 13px;
 	line-height: var(--line-height-normal);
 	text-overflow: ellipsis;
 	white-space: nowrap;
