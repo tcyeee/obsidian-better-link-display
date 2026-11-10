@@ -144,14 +144,21 @@ a.external-link > img[src^="data:image/"] {
  * images in the editor carry neither and are left alone.
  */
 
-/* The favicon embed, shrunk to an inline 16px icon from its 48px intrinsic size. */
+/*
+ * The favicon embed, shrunk to an inline 16px icon from its 48px intrinsic
+ * size. The negative right margin pulls the title 5px closer than the plain
+ * `0.25em` gap left by the embed and the literal space before it in the
+ * Markdown source; the `translateY` nudges the icon 2px up from the
+ * `vertical-align: middle` position, which otherwise sits a touch low here.
+ */
 .cm-editor .image-embed > .image-wrapper > img[src^="data:image/"] {
 	width: 16px;
 	height: 16px;
 	max-width: 16px;
 	max-height: 16px;
-	margin: 0 0.25em 0 0;
+	margin: 0 calc(0.25em - 5px) 0 0;
 	vertical-align: middle;
+	transform: translateY(-2px);
 	border-radius: var(--radius-s);
 	object-fit: contain;
 }
@@ -182,9 +189,24 @@ a.external-link > img[src^="data:image/"] {
  * span that carries both the link colour and the underline, so it has to be
  * targeted directly — styling only the outer `.cm-link` leaves the child's own
  * decoration and colour untouched.
+ *
+ * Obsidian's own `.cm-link .cm-underline` rule sets that same underline
+ * unconditionally (not just on `:hover`), and ties this rule's specificity if
+ * `.cm-underline` is matched on its own — the tie going the wrong way is what
+ * actually showed the underline. Naming the `.cm-link` ancestor here too, as
+ * Obsidian's selector does, adds the class needed to win outright.
  */
 .cm-editor .cm-line.better-link-display-line .cm-link,
-.cm-editor .cm-line.better-link-display-line .cm-underline {
+.cm-editor .cm-line.better-link-display-line .cm-link .cm-underline {
+	color: var(--text-muted);
+	text-decoration: none;
+}
+
+/*
+ * Obsidian also has a `:hover`-only variant of that same selector, one class
+ * more specific again, which needs its own override for the same reason.
+ */
+.cm-editor .cm-line.better-link-display-line .cm-link .cm-underline:hover {
 	color: var(--text-muted);
 	text-decoration: none;
 }
@@ -207,18 +229,20 @@ a.external-link > img[src^="data:image/"] {
  * elements — styling them individually draws a box around each, which is one
  * bookmark shown as two.
  *
- * The vertical padding is lopsided on purpose. Both plates are inline boxes, so
- * they are drawn around the line's text metrics, but the icon is a 16px image
- * centred on the text with `vertical-align: middle` — which puts its bottom edge
- * a hair *below* that box. An even padding therefore leaves the icon touching
- * the bottom of the plate while the top has room to spare; the extra couple of
- * pixels underneath is what makes the gap around the icon look equal.
+ * The border variant's vertical padding is lopsided on purpose. Both plates are
+ * inline boxes, so they are drawn around the line's text metrics, but the icon
+ * is a 16px image centred on the text with `vertical-align: middle` — which
+ * puts its bottom edge a hair *below* that box. An even padding therefore
+ * leaves the icon touching the bottom of the plate while the top has room to
+ * spare; the extra couple of pixels underneath is what makes the gap around
+ * the icon look equal. The background variant hides that gap well enough
+ * inside its fill that even padding reads fine there.
  */
 body.better-link-display-background a.external-link.better-link-display-bookmark,
 body.better-link-display-background .cm-editor .better-link-display-plate {
+	background-color: var(--background-secondary);
 	border-radius: var(--radius-s);
-	padding-block: 10px 4px;
-	padding-inline: 5px;
+	padding: 5px;
 }
 
 body.better-link-display-border a.external-link.better-link-display-bookmark,
