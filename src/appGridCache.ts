@@ -27,6 +27,17 @@ export class AppGridCache {
 	private appNames: Record<string, string> | null = null;
 	private appNamesSaveTimer = 0;
 
+	/**
+	 * Hostname → the vault resource path of that host's cached icon. Memoised so
+	 * that a re-render of a grid (every tile is rebuilt from scratch whenever its
+	 * block's source changes — deleting one tile, for example) can hand the
+	 * remaining tiles their real icon in the same tick instead of re-reading disk
+	 * with `adapter.exists` and leaving each one on the animated "pending"
+	 * skeleton for a frame. See {@link getIconResourcePath} for how entries are
+	 * added and refreshed.
+	 */
+	private iconResourcePaths = new Map<string, string>();
+
 	constructor(
 		private readonly adapter: DataAdapter,
 		private readonly getCacheDir: () => string
@@ -35,9 +46,26 @@ export class AppGridCache {
 	async getIconResourcePath(url: string): Promise<string | null> {
 		const hostname = hostnameOf(url);
 		if (!hostname) return null;
+		const cached = this.iconResourcePaths.get(hostname);
+		if (cached) return cached;
 		const path = this.iconPath(hostname);
 		if (!(await this.adapter.exists(path))) return null;
-		return this.adapter.getResourcePath(path);
+		const resourcePath = this.adapter.getResourcePath(path);
+		this.iconResourcePaths.set(hostname, resourcePath);
+		return resourcePath;
+	}
+
+	/**
+	 * The memoised icon path without touching disk: `null` until
+	 * {@link getIconResourcePath} or {@link writeIcon} has cached it. Lets a
+	 * re-rendered tile resolve its icon synchronously — see the fast path at the
+	 * top of `resolveTile` in `appGrid.ts`, which uses this to drop the pending
+	 * skeleton in the same tick instead of after an `await`.
+	 */
+	peekIconResourcePath(url: string): string | null {
+		const hostname = hostnameOf(url);
+		if (!hostname) return null;
+		return this.iconResourcePaths.get(hostname) ?? null;
 	}
 
 	/**
@@ -66,12 +94,29 @@ export class AppGridCache {
 		if (!hostname) return;
 		const dir = this.iconsDir();
 		if (!(await this.adapter.exists(dir))) await this.adapter.mkdir(dir);
-		await this.adapter.writeBinary(this.iconPath(hostname), bytes);
+		const path = this.iconPath(hostname);
+		await this.adapter.writeBinary(path, bytes);
+		// Refresh the memoised path: `getResourcePath` can carry a cache-busting
+		// version that changes once the bytes on disk do, so the stale path has to
+		// be replaced or a re-render right after (add/update) would point the tile
+		// at an outdated image.
+		this.iconResourcePaths.set(hostname, this.adapter.getResourcePath(path));
 	}
 
 	async getAppName(url: string): Promise<string | null> {
 		const appNames = await this.loadAppNames();
 		return appNames[url] ?? null;
+	}
+
+	/**
+	 * The in-memory app name without touching disk: `null` while app names are
+	 * unloaded (or when this URL has none). The synchronous counterpart to
+	 * {@link getAppName}, used by the same re-render fast path as
+	 * {@link peekIconResourcePath} so a settled tile's label doesn't flash its
+	 * pending skeleton again.
+	 */
+	peekAppName(url: string): string | null {
+		return this.appNames?.[url] ?? null;
 	}
 
 	/** Queues a debounced write rather than writing on every call — see the class doc. */
@@ -93,6 +138,7 @@ export class AppGridCache {
 		window.clearTimeout(this.appNamesSaveTimer);
 		this.appNamesSaveTimer = 0;
 		this.appNames = null;
+		this.iconResourcePaths.clear();
 		const dir = this.getCacheDir();
 		if (await this.adapter.exists(dir)) await this.adapter.rmdir(dir, true);
 	}

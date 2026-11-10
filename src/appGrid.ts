@@ -367,6 +367,23 @@ async function resolveTile(
 	context: TileContext
 ): Promise<void> {
 	const { url } = entry;
+
+	// Fast path for a tile that is already fully resolved in memory. A
+	// re-render after deleting a sibling tile rebuilds every remaining tile
+	// from scratch, and without this each one would briefly wear its pending
+	// skeleton again. The icon path and app name are both memoised on first
+	// resolve (see `appGridCache.ts`), so a settled tile can be filled in and
+	// its skeleton dropped in this same tick, before anything paints.
+	const knownIcon = cache.peekIconResourcePath(url);
+	const knownName = entry.name ?? cache.peekAppName(url);
+	if (knownIcon && knownName) {
+		tile.icon.src = knownIcon;
+		tile.label.setText(knownName);
+		tile.anchor.removeClass(TILE_PENDING_CLASS);
+		void syncIconBackground(tile, config, child, () => cache.readIconBytes(url));
+		return;
+	}
+
 	const [cachedIconPath, cachedAppName] = await Promise.all([
 		cache.getIconResourcePath(url),
 		cache.getAppName(url),
