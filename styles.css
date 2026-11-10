@@ -430,7 +430,12 @@ a.external-link.better-link-display-app-tile:hover {
 	background-color: var(--better-link-display-app-tile-bg, transparent);
 }
 
-/* Cropped from the same 48px cached/inlined source the single-link bookmark uses. */
+/*
+ * Drawn from the cached PNG, which `favicon.ts` keeps at the site's own
+ * resolution up to 192px rather than the 48px an inline bookmark is written at
+ * — a tile is drawn at up to 40px here, so a 48px source read as blurry. The
+ * box is square while the source need not be, hence `object-fit: contain`.
+ */
 .better-link-display-app-tile img {
 	width: var(--better-link-display-app-icon-size, 32px);
 	height: var(--better-link-display-app-icon-size, 32px);

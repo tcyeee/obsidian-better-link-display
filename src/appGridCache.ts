@@ -2,12 +2,13 @@ import { DataAdapter, normalizePath } from "obsidian";
 import { logWarn } from "./log";
 
 /**
- * Named apart from any earlier cache generation (favicon-keyed icons, full
- * page titles): both hold one small PNG per hostname with no expiry, so a
- * same-named directory would otherwise go on serving a stale favicon forever
- * under the new logo-based meaning instead of triggering a fresh fetch.
+ * Named apart from every earlier cache generation (favicon-keyed icons, full
+ * page titles, and `logos`, which held the same icons re-encoded down to the
+ * inline bookmark's 48px): each holds one PNG per hostname with no expiry, so
+ * reusing a directory name would go on serving the old generation's file
+ * forever instead of triggering a fresh fetch at the current resolution.
  */
-const ICONS_SUBDIR = "logos";
+const ICONS_SUBDIR = "logos-lg";
 const APP_NAMES_FILE = "app-names.json";
 
 /** Long enough to collapse a 20-link grid's first render into one write. */

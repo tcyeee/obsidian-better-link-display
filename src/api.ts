@@ -125,7 +125,17 @@ export async function fetchSiteInfo(url: string, token: string): Promise<FetchRe
 export interface SiteAppInfo {
 	/** Short app/site name (`appName`, server-side falls back to `title` if the page has no manifest `short_name`). */
 	appName: string;
-	/** The service's short-lived signed CDN link to the big icon (`logo`, falling back to `favicon`), undownloaded — "" if it has neither. */
+	/**
+	 * The service's short-lived signed CDN link to the **big** icon (`logo`,
+	 * falling back to `favicon`), undownloaded — "" if it has neither.
+	 *
+	 * `logo` and `favicon` are the service's two separate icon scenarios, not
+	 * two sizes of one image (see API.md): `favicon` is favicon-first and
+	 * `logo` is brand-logo-first, each falling back to the other server-side.
+	 * A tile draws its icon far larger than an inline bookmark does, so it must
+	 * ask for `logo` — taking `favicon` here is how a tile ends up showing a
+	 * 16px favicon scaled up to 40px.
+	 */
 	iconSrc: string;
 }
 
@@ -150,8 +160,11 @@ export async function fetchSiteAppInfo(url: string, token: string): Promise<Fetc
 		return {
 			ok: true,
 			info: {
-				appName: payload.data.appName ?? payload.data.title,
-				iconSrc: payload.data.logo ?? payload.data.favicon ?? "",
+				appName: payload.data.appName || payload.data.title,
+				// `||`, not `??`: the service documents these as nullable, but an
+				// empty string is the same "it has none" and must fall through to
+				// the other field rather than count as an answer.
+				iconSrc: payload.data.logo || payload.data.favicon || "",
 			},
 		};
 	}

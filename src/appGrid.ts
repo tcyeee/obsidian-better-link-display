@@ -37,6 +37,14 @@ const ADD_TILE_CLASS = "better-link-display-app-add";
 const ADD_TILE_TRAILING_CLASS = "better-link-display-app-add-trailing";
 const CONFIG_BUTTON_CLASS = "better-link-display-app-config-button";
 
+/**
+ * The resolution of the initial-letter placeholder a tile wears until (or, if
+ * the lookup fails, instead of) its real icon. Bigger than the 48px an inline
+ * bookmark's icon is written at: a tile draws it at up to 40px, so that size
+ * was soft on every high-density display.
+ */
+const PLACEHOLDER_ICON_PX = 128;
+
 /** Only unloads when its block's element leaves the DOM — the cue to stop updating tiles. */
 class AppGridRenderChild extends MarkdownRenderChild {
 	cancelled = false;
@@ -292,7 +300,9 @@ function buildTile(grid: HTMLElement, entry: AppGridEntry): Tile {
 		cls: `external-link ${TILE_CLASS} ${TILE_PENDING_CLASS}`,
 		href: url,
 	});
-	const icon = anchor.createEl("img", { attr: { src: fallbackIcon(url), alt: "" } });
+	const icon = anchor.createEl("img", {
+		attr: { src: fallbackIcon(url, PLACEHOLDER_ICON_PX), alt: "" },
+	});
 	const label = anchor.createDiv({
 		cls: `${TILE_CLASS}-label`,
 		text: entry.name ?? hostnameOf(url) ?? url,
