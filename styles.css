@@ -417,6 +417,8 @@ a.external-link.better-link-display-app-tile {
 	text-decoration: none;
 	background-image: none;
 	text-align: center;
+	/* Anchors the before/after drop bars drawn for drag-to-reorder. */
+	position: relative;
 }
 
 a.external-link.better-link-display-app-tile:hover {
@@ -444,6 +446,37 @@ a.external-link.better-link-display-app-tile-selected {
 		animation: none;
 		box-shadow: inset 0 0 0 2px var(--interactive-accent);
 	}
+}
+
+/*
+ * Drag-to-reorder (see `attachDrag` in appGrid.ts). The dragged tile is
+ * ghosted in place while the browser's drag image follows the pointer, and the
+ * tile it would land next to wears a short accent bar on the edge the dragged
+ * tile would be inserted against — left for "before", right for "after". The
+ * bar is drawn just outside the tile, in the grid gap, so it never covers the
+ * icon or label it is pointing at.
+ */
+a.external-link.better-link-display-app-tile-dragging {
+	opacity: 0.4;
+}
+
+a.external-link.better-link-display-app-tile-drop-before::before,
+a.external-link.better-link-display-app-tile-drop-after::after {
+	content: "";
+	position: absolute;
+	top: -2px;
+	bottom: -2px;
+	width: 3px;
+	border-radius: 2px;
+	background-color: var(--interactive-accent);
+}
+
+a.external-link.better-link-display-app-tile-drop-before::before {
+	left: -5px;
+}
+
+a.external-link.better-link-display-app-tile-drop-after::after {
+	right: -5px;
 }
 
 /*

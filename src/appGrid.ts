@@ -12,6 +12,7 @@ import {
 	AppGridConfig,
 	AppGridEntry,
 	buildAppGridInsertion,
+	moveAppGridLine,
 	normalizeAppGridUrl,
 	parseAppGridConfig,
 	parseAppGridSource,
@@ -39,6 +40,11 @@ const ADD_TILE_CLASS = "better-link-display-app-add";
 /** Only shown once the grid already has tiles — see {@link buildAddTile}. */
 const ADD_TILE_TRAILING_CLASS = "better-link-display-app-add-trailing";
 const CONFIG_BUTTON_CLASS = "better-link-display-app-config-button";
+/** The tile being dragged, ghosted so the drop target reads against it. */
+const TILE_DRAGGING_CLASS = "better-link-display-app-tile-dragging";
+/** The tile the dragged one is about to be inserted before / after. */
+const TILE_DROP_BEFORE_CLASS = "better-link-display-app-tile-drop-before";
+const TILE_DROP_AFTER_CLASS = "better-link-display-app-tile-drop-after";
 
 /**
  * The resolution of the initial-letter placeholder a tile wears until (or, if
@@ -90,6 +96,7 @@ export function renderAppGrid(
 		const context = { app, ctx, el, lookup, cache, child, config };
 		void resolveTile(tile, entry, index, lookup, cache, child, config, context);
 		attachContextMenu(tile, entry, index, context);
+		attachDrag(tile, entry, index, context);
 	});
 
 	buildAddTile(grid, entries.length > 0, (tile) => openAddPanel(app, ctx, el, tile));
@@ -479,6 +486,118 @@ function attachContextMenu(
 	tileRegistry.set(tile.anchor, { tile, url: entry.url, index, context });
 	const win = tile.anchor.ownerDocument.defaultView;
 	if (win) ensureContextMenuCapture(win);
+}
+
+/** The tile being dragged, held module-wide so a drop target can read its index. */
+let dragSource: { index: number; context: TileContext } | null = null;
+/** The source anchor, kept past `dragSource`'s null-out so `dragend` can ghost it. */
+let dragSourceAnchor: HTMLAnchorElement | null = null;
+
+/**
+ * Wires HTML5 drag-and-drop reordering onto one tile. A tile is draggable only
+ * to be reordered, so the handlers check for `.cm-editor` at event time — the
+ * same reason {@link buildAddTile}'s click handler does: the tile is built once
+ * and reused by whichever view rendered it, and Reading view has no editor
+ * behind it to write the new order into.
+ *
+ * `dragstart`/`dragover`/`drop` run on the tile in the bubble phase, so they
+ * see the event before any ancestor listener (Obsidian's own editor drag
+ * handling) does, and each one `stopPropagation()`s once it knows the event is
+ * ours. The order is committed by {@link moveAppGridLine} through
+ * {@link writeAppGridBody} — the block then re-renders in the new order, the
+ * same as an edit typed by hand.
+ */
+function attachDrag(tile: Tile, entry: AppGridEntry, index: number, context: TileContext): void {
+	const anchor = tile.anchor;
+	anchor.draggable = true;
+
+	anchor.addEventListener("dragstart", (event) => {
+		if (!anchor.closest(".cm-editor")) return;
+		event.stopPropagation();
+		dragSource = { index, context };
+		dragSourceAnchor = anchor;
+		anchor.addClass(TILE_DRAGGING_CLASS);
+		const transfer = event.dataTransfer;
+		if (transfer) {
+			transfer.effectAllowed = "move";
+			// `text/plain` so the drag also reads as a link if dropped outside the
+			// grid (and so Firefox will start the drag at all); the custom type is
+			// only ever set, never read, since the source index comes from the
+			// module state above rather than the payload.
+			transfer.setData("text/plain", entry.url);
+			transfer.setData("application/x-better-link-display-tile", JSON.stringify({ index, url: entry.url }));
+			transfer.setDragImage(anchor, 0, 0);
+		}
+	});
+
+	anchor.addEventListener("dragover", (event) => {
+		// Never reorder across two different grids: the drop target's index is
+		// meaningless to the source block. `el` is the block root, shared by every
+		// tile in one grid and distinct between grids.
+		if (!dragSource || dragSource.context.el !== context.el) return;
+		event.preventDefault();
+		event.stopPropagation();
+		if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+		if (anchor === dragSourceAnchor) return;
+		const before = isBeforeTarget(anchor, event);
+		anchor.toggleClass(TILE_DROP_BEFORE_CLASS, before);
+		anchor.toggleClass(TILE_DROP_AFTER_CLASS, !before);
+	});
+
+	anchor.addEventListener("dragleave", (event) => {
+		// A drag onto the icon or label fires a spurious `dragleave` on the tile;
+		// only clear once the pointer has actually left the tile.
+		if (anchor.contains(event.relatedTarget as Node | null)) return;
+		clearDropIndicator(anchor);
+	});
+
+	anchor.addEventListener("drop", (event) => {
+		if (!dragSource || dragSource.context.el !== context.el) return;
+		event.preventDefault();
+		event.stopPropagation();
+		clearDropIndicator(anchor);
+		const { index: from, context: sourceContext } = dragSource;
+		dragSource = null;
+		const to = dropTargetIndex(from, index, anchor, event);
+		if (to !== from) writeAppGridBody(sourceContext, (body) => moveAppGridLine(body, from, to));
+	});
+
+	anchor.addEventListener("dragend", () => {
+		clearDropIndicator(anchor);
+		anchor.removeClass(TILE_DRAGGING_CLASS);
+		dragSource = null;
+		dragSourceAnchor = null;
+	});
+}
+
+/**
+ * Whether the pointer is over the half of `target` that reads as "insert
+ * before" it. The grid flows left-to-right and wraps, so the split is on
+ * reading order: a pointer above the tile's vertical centre is always "before",
+ * below it "after", and on the same row the horizontal centre decides.
+ */
+function isBeforeTarget(target: HTMLElement, event: DragEvent): boolean {
+	const rect = target.getBoundingClientRect();
+	const midY = rect.top + rect.height / 2;
+	const midX = rect.left + rect.width / 2;
+	if (event.clientY < midY) return true;
+	if (event.clientY > midY) return false;
+	return event.clientX < midX;
+}
+
+/**
+ * The dragged tile's final index if dropped where the pointer is. `gap` is the
+ * insertion point in the *current* order (0..n): the tile's index when dropping
+ * before it, one past it when after. Removing the dragged tile first shifts
+ * every gap at or past it down by one, so `gap <= from` needs no adjustment.
+ */
+function dropTargetIndex(from: number, targetIndex: number, target: HTMLElement, event: DragEvent): number {
+	const gap = isBeforeTarget(target, event) ? targetIndex : targetIndex + 1;
+	return gap <= from ? gap : gap - 1;
+}
+
+function clearDropIndicator(anchor: HTMLAnchorElement): void {
+	anchor.removeClass(TILE_DROP_BEFORE_CLASS, TILE_DROP_AFTER_CLASS);
 }
 
 /**

@@ -77,6 +77,30 @@ export function setAppGridEntryNameIfBare(source: string, index: number, url: st
 	return lines.join("\n");
 }
 
+/**
+ * Moves the `from`-th entry to the `to`-th position in the order
+ * {@link parseAppGridSource} returns them, leaving every other line — blank, a
+ * comment, the config line — exactly where it was. `to` is the entry's *final*
+ * index (0-based), so `moveAppGridLine(body, 0, 2)` puts the first entry third.
+ * Powers drag-to-reorder on the grid's tiles: a tile only knows its position
+ * among the *valid* lines, never the raw line number, and reordering is exactly
+ * a remove-then-insert against that same list.
+ */
+export function moveAppGridLine(source: string, from: number, to: number): string {
+	const lines = source.split("\n");
+	const entryLines: string[] = [];
+	for (const line of lines) {
+		if (parseEntryLine(line)) entryLines.push(line);
+	}
+	if (from < 0 || from >= entryLines.length || to < 0 || to >= entryLines.length) return source;
+
+	const [moved] = entryLines.splice(from, 1);
+	entryLines.splice(to, 0, moved);
+
+	let i = 0;
+	return lines.map((line) => (parseEntryLine(line) ? entryLines[i++] : line)).join("\n");
+}
+
 /** One line, parsed as either form — the shared predicate behind every function above. */
 function parseEntryLine(line: string): AppGridEntry | null {
 	const trimmed = line.trim();
