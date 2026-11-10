@@ -790,6 +790,13 @@ a.external-link.better-link-display-app-tile:hover {
 	align-items: center;
 	justify-content: center;
 	width: 100%;
+	min-width: 0;
+	padding: 0;
+	border: 0;
+	background: transparent;
+	background-color: transparent;
+	box-shadow: none;
+	appearance: none;
 	text-align: center;
 	height: 100%;
 	/* Above the sliding highlight, or its own `pointer-events: none` would be the only thing still letting clicks through. */
@@ -801,15 +808,25 @@ a.external-link.better-link-display-app-tile:hover {
 	cursor: pointer;
 }
 
+.better-link-display-app-config-panel-icon-size-radio:hover,
+.better-link-display-app-config-panel-gap-radio:hover,
+.better-link-display-app-config-panel-background-radio:hover {
+	background: transparent;
+	background-color: transparent;
+	color: var(--text-muted);
+}
+
 .better-link-display-app-config-panel-icon-size-radio-text,
 .better-link-display-app-config-panel-gap-radio-text,
 .better-link-display-app-config-panel-background-radio-text {
+	padding-inline: 5px;
+	font-size: 12px;
 	text-align: center;
 }
 
-.better-link-display-app-config-panel-icon-size-radio[aria-checked="true"] .better-link-display-app-config-panel-icon-size-radio-text,
-.better-link-display-app-config-panel-gap-radio[aria-checked="true"] .better-link-display-app-config-panel-gap-radio-text,
-.better-link-display-app-config-panel-background-radio[aria-checked="true"] .better-link-display-app-config-panel-background-radio-text {
+.better-link-display-app-config-panel-icon-size-radio[aria-pressed="true"] .better-link-display-app-config-panel-icon-size-radio-text,
+.better-link-display-app-config-panel-gap-radio[aria-pressed="true"] .better-link-display-app-config-panel-gap-radio-text,
+.better-link-display-app-config-panel-background-radio[aria-pressed="true"] .better-link-display-app-config-panel-background-radio-text {
 	color: var(--text-on-accent, #ffffff);
 	font-weight: 600;
 }

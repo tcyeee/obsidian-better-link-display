@@ -60,8 +60,8 @@ export function closeAppConfigPanel(): void {
 }
 
 /**
- * Builds one segmented control: a native `radio` per option, visually
- * hidden, driving a sliding highlight through a `data-*` attribute set on
+ * Builds one segmented control from native buttons, driving a sliding
+ * highlight through a `data-*` attribute set on
  * the group container to the *selected option's own key* (not an index) —
  * matched in `styles.css` one option value at a time, the same way the
  * design doc's reference implementation keys its `data-size`/`data-layout`
@@ -84,41 +84,26 @@ function buildSegmentGroup<K extends string>(
 	onChange: (key: K) => void
 ): void {
 	const group = container.createDiv({ cls: `${classPrefix}-group` });
-	group.setAttribute("role", "radiogroup");
+	group.setAttribute("role", "group");
 	group.setAttribute(`data-${dataKey}`, initialKey);
 	group.createDiv({ cls: `${classPrefix}-slider` });
 
 	for (const option of options) {
-		const label = group.createEl("label", { cls: `${classPrefix}-radio` });
-		label.setAttribute("role", "radio");
-		label.setAttribute("aria-checked", String(option.key === initialKey));
-		label.tabIndex = option.key === initialKey ? 0 : -1;
-		label.createSpan({ cls: `${classPrefix}-radio-text`, text: option.label });
+		const button = group.createEl("button", { cls: `${classPrefix}-radio` });
+		button.type = "button";
+		button.setAttribute("aria-pressed", String(option.key === initialKey));
+		button.tabIndex = option.key === initialKey ? 0 : -1;
+		button.createSpan({ cls: `${classPrefix}-radio-text`, text: option.label });
 
-		label.addEventListener("click", () => {
-			for (const sibling of Array.from(group.querySelectorAll<HTMLElement>(`[role="radio"]`))) {
-				sibling.setAttribute("aria-checked", String(sibling === label));
-				sibling.tabIndex = sibling === label ? 0 : -1;
+		button.addEventListener("click", () => {
+			for (const sibling of Array.from(group.querySelectorAll<HTMLElement>(`button[aria-pressed]`))) {
+				sibling.setAttribute("aria-pressed", String(sibling === button));
+				sibling.tabIndex = sibling === button ? 0 : -1;
 			}
 			group.setAttribute(`data-${dataKey}`, option.key);
 			onChange(option.key);
 		});
-		label.addEventListener("keydown", (event: KeyboardEvent) => {
-			if (event.key === " " || event.key === "Enter") {
-				event.preventDefault();
-				label.click();
-				return;
-			}
-			if (!["ArrowLeft", "ArrowUp", "ArrowRight", "ArrowDown"].includes(event.key)) return;
-			event.preventDefault();
-			const index = options.findIndex(({ key }) => key === option.key);
-			const delta = event.key === "ArrowLeft" || event.key === "ArrowUp" ? -1 : 1;
-			const next = options[(index + delta + options.length) % options.length];
-			const target = group.querySelector<HTMLElement>(`[role="radio"][data-option="${next.key}"]`);
-			target?.click();
-			target?.focus();
-		});
-		label.setAttribute("data-option", option.key);
+		button.setAttribute("data-option", option.key);
 	}
 }
 
