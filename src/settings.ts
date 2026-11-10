@@ -21,17 +21,20 @@ export interface BetterLinkDisplaySettings {
 /**
  * Inside the plugin's own folder, which Obsidian's file explorer hides by
  * default — there is nothing here the user is meant to browse to directly.
- * Hardcoded rather than built from a manifest id at runtime: the id is fixed,
- * and every other constant in this plugin (`API_BASE`, `SITE_URL`) is written
- * the same way.
+ * Built from `Vault#configDir` rather than a hardcoded `.obsidian`, since
+ * that folder name is user-configurable; the plugin id is still hardcoded,
+ * the same way every other constant in this plugin (`API_BASE`, `SITE_URL`)
+ * is written.
  */
-export const DEFAULT_APP_GRID_CACHE_DIR = ".obsidian/plugins/better-link-display/favicon-cache";
+export function defaultAppGridCacheDir(configDir: string): string {
+	return `${configDir}/plugins/better-link-display/favicon-cache`;
+}
 
 /**
  * A function rather than a constant because the default language depends on the
  * Obsidian interface language, which isn't known until the plugin is running.
  */
-export function createDefaultSettings(): BetterLinkDisplaySettings {
+export function createDefaultSettings(configDir: string): BetterLinkDisplaySettings {
 	return {
 		accessToken: "",
 		language: detectLanguage(),
@@ -39,7 +42,7 @@ export function createDefaultSettings(): BetterLinkDisplaySettings {
 		// against, so an update must not restyle them on its own.
 		linkBackground: false,
 		linkBorder: false,
-		appGridCacheDir: DEFAULT_APP_GRID_CACHE_DIR,
+		appGridCacheDir: defaultAppGridCacheDir(configDir),
 	};
 }
 
@@ -224,7 +227,8 @@ export class BetterLinkDisplaySettingTab extends PluginSettingTab {
 					text.setValue(this.plugin.settings.appGridCacheDir).onChange((value) => {
 						// An emptied field reverts to the default rather than saving a
 						// path the cache would otherwise have to treat as the vault root.
-						this.plugin.settings.appGridCacheDir = value.trim() || DEFAULT_APP_GRID_CACHE_DIR;
+						this.plugin.settings.appGridCacheDir =
+							value.trim() || defaultAppGridCacheDir(this.app.vault.configDir);
 						this.queueSave();
 					});
 				});

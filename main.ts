@@ -109,7 +109,7 @@ export default class BetterLinkDisplayPlugin extends Plugin {
 
 	async loadSettings() {
 		const stored = (await this.loadData()) as Partial<BetterLinkDisplaySettings> | null;
-		const defaults = createDefaultSettings();
+		const defaults = createDefaultSettings(this.app.vault.configDir);
 		this.settings = {
 			accessToken: stored?.accessToken ?? defaults.accessToken,
 			language: isLanguage(stored?.language) ? stored.language : defaults.language,
