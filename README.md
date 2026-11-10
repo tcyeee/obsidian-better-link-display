@@ -46,6 +46,25 @@ When no icon is available, formatting or setting a custom name uses the root dom
 
 If a lookup fails, a notice explains why and your note is left untouched.
 
+## Bookmark grid
+
+A `link-grid` code block renders a grid of bookmark tiles — one per URL, showing the site's app icon and name. Right-click in the editor and choose **Insert bookmark view**, or type it by hand:
+
+    ```link-grid
+    https://example.com
+    https://github.com
+    ```
+
+Each line is a bare URL or `[Name](url)` to give a tile your own title.
+
+In Live Preview:
+
+- Click the **+** tile to add a link — enter a domain (`example.com`) or a full URL, then **Add**.
+- Right-click a tile for **Edit name**, **Update bookmark** (re-fetch the icon and name), or **Delete bookmark**.
+- Click the gear button beside the block for its appearance: icon size, spacing, area background, a card behind each tile, and a colour plate tinted from each icon.
+
+Reading view shows the same grid as plain links — the editing controls only exist in Live Preview. Icons and titles are cached in your vault, so tiles load instantly after the first lookup; clear the cache from settings.
+
 ## Settings
 
 | Setting | |
@@ -55,6 +74,8 @@ If a lookup fails, a notice explains why and your note is left untouched.
 | **Background** | Soft grey card behind formatted links. Off by default. |
 | **Border** | Light outline around formatted links. Off by default. |
 | **Access token** | Your lookup key, with a **Test** button. |
+| **Cache location** | Vault-relative folder where bookmark-grid icons and titles are cached. |
+| **Cache** | Icons and titles already looked up for bookmark grids, with a **Clear cache** button. |
 
 Background and Border are purely visual and change nothing in your notes.
 
