@@ -60,6 +60,7 @@ Each line is a bare URL or `[Name](url)` to give a tile your own title.
 In Live Preview:
 
 - Click the **+** tile to add a link — enter a domain (`example.com`) or a full URL, then **Add**.
+- Drag a tile to reorder the grid — drop before or after another tile.
 - Right-click a tile for **Edit name**, **Update bookmark** (re-fetch the icon and name), or **Delete bookmark**.
 - Click the gear button beside the block for its appearance: icon size, spacing, area background, a card behind each tile, and a colour plate tinted from each icon.
 

@@ -5,6 +5,7 @@ import {
 	AppGridEntry,
 	DEFAULT_APP_GRID_CONFIG,
 	buildAppGridInsertion,
+	moveAppGridLine,
 	normalizeAppGridUrl,
 	parseAppGridConfig,
 	parseAppGridSource,
@@ -163,6 +164,80 @@ test("removeAppGridLine drops a named line too", () => {
 		removeAppGridLine(source, 1),
 		"https://example.com\nhttps://example.net"
 	);
+});
+
+test("moveAppGridLine moves the first entry to the last position", () => {
+	const source = "https://example.com\nhttps://example.org\nhttps://example.net";
+	assert.equal(
+		moveAppGridLine(source, 0, 2),
+		"https://example.org\nhttps://example.net\nhttps://example.com"
+	);
+});
+
+test("moveAppGridLine moves the last entry to the first position", () => {
+	const source = "https://example.com\nhttps://example.org\nhttps://example.net";
+	assert.equal(
+		moveAppGridLine(source, 2, 0),
+		"https://example.net\nhttps://example.com\nhttps://example.org"
+	);
+});
+
+test("moveAppGridLine reorders within the middle", () => {
+	const source = "https://a.com\nhttps://b.com\nhttps://c.com\nhttps://d.com";
+	assert.equal(
+		moveAppGridLine(source, 1, 2),
+		"https://a.com\nhttps://c.com\nhttps://b.com\nhttps://d.com"
+	);
+});
+
+test("moveAppGridLine keeps a written name on the moved line", () => {
+	const source = "[First](https://a.com)\nhttps://b.com\nhttps://c.com";
+	assert.equal(
+		moveAppGridLine(source, 0, 2),
+		"https://b.com\nhttps://c.com\n[First](https://a.com)"
+	);
+});
+
+test("moveAppGridLine leaves blank lines, comments and the config line in place", () => {
+	const source = [
+		"icon=32;gap=12;bg=;appbg=0;iconbg=0;;",
+		"https://a.com",
+		"",
+		"# a comment",
+		"https://b.com",
+		"https://c.com",
+	].join("\n");
+	assert.equal(
+		moveAppGridLine(source, 1, 2),
+		[
+			"icon=32;gap=12;bg=;appbg=0;iconbg=0;;",
+			"https://a.com",
+			"",
+			"# a comment",
+			"https://c.com",
+			"https://b.com",
+		].join("\n")
+	);
+});
+
+test("moveAppGridLine treats duplicate URLs as distinct by position", () => {
+	const source = "https://example.com\nhttps://example.org\nhttps://example.com";
+	assert.equal(
+		moveAppGridLine(source, 0, 2),
+		"https://example.org\nhttps://example.com\nhttps://example.com"
+	);
+});
+
+test("moveAppGridLine is a no-op when from equals to", () => {
+	const source = "https://example.com\nhttps://example.org";
+	assert.equal(moveAppGridLine(source, 1, 1), source);
+});
+
+test("moveAppGridLine is a no-op for an out-of-range index", () => {
+	const source = "https://example.com\nhttps://example.org";
+	assert.equal(moveAppGridLine(source, 0, 5), source);
+	assert.equal(moveAppGridLine(source, 5, 0), source);
+	assert.equal(moveAppGridLine(source, -1, 0), source);
 });
 
 test("parseAppGridSource skips a config line", () => {
