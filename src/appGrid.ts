@@ -17,6 +17,7 @@ import {
 	parseAppGridSource,
 	removeAppGridLine,
 	setAppGridEntryName,
+	setAppGridEntryNameIfBare,
 	upsertAppGridConfigLine,
 } from "./appGridScan";
 import { AppGridCache } from "./appGridCache";
@@ -86,8 +87,9 @@ export function renderAppGrid(
 	entries.forEach((entry, index) => {
 		const tile = buildTile(grid, entry);
 		applyTileAppearance(tile, config);
-		void resolveTile(tile, entry, lookup, cache, child, config);
-		attachContextMenu(tile, entry, index, { app, ctx, el, lookup, cache, child, config });
+		const context = { app, ctx, el, lookup, cache, child, config };
+		void resolveTile(tile, entry, index, lookup, cache, child, config, context);
+		attachContextMenu(tile, entry, index, context);
 	});
 
 	buildAddTile(grid, entries.length > 0, (tile) => openAddPanel(app, ctx, el, tile));
@@ -289,18 +291,30 @@ function openConfigPanel(
 	const to = { line: info.lineEnd, ch: 0 };
 	const body = editor.getRange(from, to);
 
-	showAppConfigPanel(button, parseAppGridConfig(body), (config) => {
+	const config = parseAppGridConfig(body);
+	const grid = el.querySelector<HTMLElement>(`.${GRID_CLASS}`);
+	const tiles = Array.from(el.querySelectorAll<HTMLAnchorElement>(`a.${TILE_CLASS}`));
+	const applyLiveConfig = (next: AppGridConfig): void => {
+		if (grid) applyAppearance(grid, next);
+		for (const anchor of tiles) {
+			const icon = anchor.querySelector<HTMLImageElement>("img");
+			const label = anchor.querySelector<HTMLElement>(`.${TILE_CLASS}-label`);
+			if (icon && label) applyTileAppearance({ anchor, icon, label }, next);
+		}
+	};
+	const persistConfig = (next: AppGridConfig): void => {
 		const freshEditor = findEditor(app, ctx.sourcePath);
 		const freshInfo = ctx.getSectionInfo(el);
 		if (!freshEditor || !freshInfo) return;
 		const freshFrom = { line: freshInfo.lineStart + 1, ch: 0 };
 		const freshTo = { line: freshInfo.lineEnd, ch: 0 };
 		freshEditor.replaceRange(
-			upsertAppGridConfigLine(freshEditor.getRange(freshFrom, freshTo), config),
+			upsertAppGridConfigLine(freshEditor.getRange(freshFrom, freshTo), next),
 			freshFrom,
 			freshTo
 		);
-	});
+	};
+	showAppConfigPanel(button, config, applyLiveConfig, persistConfig);
 }
 
 /** The open editor, if any, for a note at `path` — a `link-grid` block is only editable while one exists. */
@@ -315,6 +329,7 @@ function findEditor(app: App, path: string): Editor | null {
 interface Tile {
 	anchor: HTMLAnchorElement;
 	icon: HTMLImageElement;
+	iconShell?: HTMLElement;
 	label: HTMLElement;
 }
 
@@ -324,14 +339,15 @@ function buildTile(grid: HTMLElement, entry: AppGridEntry): Tile {
 		cls: `external-link ${TILE_CLASS} ${TILE_PENDING_CLASS}`,
 		href: url,
 	});
-	const icon = anchor.createEl("img", {
+	const iconShell = anchor.createDiv({ cls: `${TILE_CLASS}-icon-shell` });
+	const icon = iconShell.createEl("img", {
 		attr: { src: fallbackIcon(url, PLACEHOLDER_ICON_PX), alt: "" },
 	});
 	const label = anchor.createDiv({
 		cls: `${TILE_CLASS}-label`,
 		text: entry.name ?? hostnameOf(url) ?? url,
 	});
-	return { anchor, icon, label };
+	return { anchor, icon, label, iconShell };
 }
 
 /**
@@ -343,10 +359,12 @@ function buildTile(grid: HTMLElement, entry: AppGridEntry): Tile {
 async function resolveTile(
 	tile: Tile,
 	entry: AppGridEntry,
+	index: number,
 	lookup: SiteLookup,
 	cache: AppGridCache,
 	child: AppGridRenderChild,
-	config: AppGridConfig
+	config: AppGridConfig,
+	context: TileContext
 ): Promise<void> {
 	const { url } = entry;
 	const [cachedIconPath, cachedAppName] = await Promise.all([
@@ -375,6 +393,7 @@ async function resolveTile(
 		if (!entry.name && !cachedAppName) {
 			tile.label.setText(outcome.info.appName);
 			void cache.setAppName(url, outcome.info.appName);
+			writeAppGridBody(context, (body) => setAppGridEntryNameIfBare(body, index, url, outcome.info.appName));
 		}
 
 		if (!cachedIconPath) {

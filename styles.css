@@ -369,6 +369,7 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
 	display: grid;
 	grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
 	gap: var(--better-link-display-app-gap, var(--size-4-3));
+	transition: gap 180ms ease, background-color 180ms ease, padding 180ms ease;
 	margin: var(--size-4-2) 0;
 }
 
@@ -442,8 +443,41 @@ a.external-link.better-link-display-app-tile:hover {
 	height: var(--better-link-display-app-icon-size, 32px);
 	max-width: var(--better-link-display-app-icon-size, 32px);
 	max-height: var(--better-link-display-app-icon-size, 32px);
+	transition: width 180ms ease, height 180ms ease, max-width 180ms ease, max-height 180ms ease;
 	border-radius: var(--radius-s);
 	object-fit: contain;
+}
+
+.better-link-display-app-tile-icon-shell {
+	position: relative;
+	width: var(--better-link-display-app-icon-size, 32px);
+	height: var(--better-link-display-app-icon-size, 32px);
+	flex: 0 0 auto;
+	border-radius: var(--radius-s);
+}
+
+.better-link-display-app-tile-pending .better-link-display-app-tile-icon-shell {
+	background: linear-gradient(90deg, var(--background-modifier-border) 25%, var(--background-secondary) 50%, var(--background-modifier-border) 75%);
+	background-size: 200% 100%;
+	animation: better-link-display-app-skeleton 1.2s ease-in-out infinite;
+}
+
+.better-link-display-app-tile-pending .better-link-display-app-tile-icon-shell img {
+	visibility: hidden;
+}
+
+.better-link-display-app-tile-pending .better-link-display-app-tile-label {
+	width: 72%;
+	min-height: 0.85em;
+	border-radius: 4px;
+	color: transparent;
+	background: linear-gradient(90deg, var(--background-modifier-border) 25%, var(--background-secondary) 50%, var(--background-modifier-border) 75%);
+	background-size: 200% 100%;
+	animation: better-link-display-app-skeleton 1.2s ease-in-out infinite;
+}
+
+@keyframes better-link-display-app-skeleton {
+	to { background-position: -200% 0; }
 }
 
 /*
@@ -702,6 +736,10 @@ a.external-link.better-link-display-app-tile:hover {
 	background: var(--background-secondary, rgba(240, 242, 247, 0.9));
 }
 
+.better-link-display-app-config-panel-icon-size-group {
+	grid-template-columns: repeat(5, 1fr);
+}
+
 .better-link-display-app-config-panel-icon-size-slider,
 .better-link-display-app-config-panel-gap-slider,
 .better-link-display-app-config-panel-background-slider {
@@ -719,23 +757,30 @@ a.external-link.better-link-display-app-tile:hover {
 }
 
 /* Three equal shares — `translateX(N * 100%)` moves by the highlight's own width, so it doesn't need the track's pixel width to stay in step with it. */
-.better-link-display-app-config-panel-icon-size-group[data-icon-size="s"] .better-link-display-app-config-panel-icon-size-slider,
 .better-link-display-app-config-panel-gap-group[data-gap="s"] .better-link-display-app-config-panel-gap-slider,
 .better-link-display-app-config-panel-background-group[data-background="none"] .better-link-display-app-config-panel-background-slider {
 	transform: translateX(0%);
 }
 
-.better-link-display-app-config-panel-icon-size-group[data-icon-size="m"] .better-link-display-app-config-panel-icon-size-slider,
 .better-link-display-app-config-panel-gap-group[data-gap="m"] .better-link-display-app-config-panel-gap-slider,
 .better-link-display-app-config-panel-background-group[data-background="gray"] .better-link-display-app-config-panel-background-slider {
 	transform: translateX(100%);
 }
 
-.better-link-display-app-config-panel-icon-size-group[data-icon-size="l"] .better-link-display-app-config-panel-icon-size-slider,
 .better-link-display-app-config-panel-gap-group[data-gap="l"] .better-link-display-app-config-panel-gap-slider,
 .better-link-display-app-config-panel-background-group[data-background="beige"] .better-link-display-app-config-panel-background-slider {
 	transform: translateX(200%);
 }
+
+.better-link-display-app-config-panel-icon-size-slider {
+	width: calc((100% - 6px) / 5);
+}
+
+.better-link-display-app-config-panel-icon-size-group[data-icon-size="xs"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(0%); }
+.better-link-display-app-config-panel-icon-size-group[data-icon-size="s"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(100%); }
+.better-link-display-app-config-panel-icon-size-group[data-icon-size="m"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(200%); }
+.better-link-display-app-config-panel-icon-size-group[data-icon-size="l"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(300%); }
+.better-link-display-app-config-panel-icon-size-group[data-icon-size="xl"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(400%); }
 
 .better-link-display-app-config-panel-icon-size-radio,
 .better-link-display-app-config-panel-gap-radio,
@@ -744,6 +789,8 @@ a.external-link.better-link-display-app-tile:hover {
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	width: 100%;
+	text-align: center;
 	height: 100%;
 	/* Above the sliding highlight, or its own `pointer-events: none` would be the only thing still letting clicks through. */
 	z-index: 1;
@@ -754,23 +801,15 @@ a.external-link.better-link-display-app-tile:hover {
 	cursor: pointer;
 }
 
-.better-link-display-app-config-panel-icon-size-radio-input,
-.better-link-display-app-config-panel-gap-radio-input,
-.better-link-display-app-config-panel-background-radio-input {
-	position: absolute;
-	width: 0;
-	height: 0;
-	opacity: 0;
-	pointer-events: none;
+.better-link-display-app-config-panel-icon-size-radio-text,
+.better-link-display-app-config-panel-gap-radio-text,
+.better-link-display-app-config-panel-background-radio-text {
+	text-align: center;
 }
 
-/*
- * The input has to come immediately before its text span in the DOM for this
- * adjacent-sibling selector to reach it — see `buildSegmentGroup`.
- */
-.better-link-display-app-config-panel-icon-size-radio-input:checked + .better-link-display-app-config-panel-icon-size-radio-text,
-.better-link-display-app-config-panel-gap-radio-input:checked + .better-link-display-app-config-panel-gap-radio-text,
-.better-link-display-app-config-panel-background-radio-input:checked + .better-link-display-app-config-panel-background-radio-text {
+.better-link-display-app-config-panel-icon-size-radio[aria-checked="true"] .better-link-display-app-config-panel-icon-size-radio-text,
+.better-link-display-app-config-panel-gap-radio[aria-checked="true"] .better-link-display-app-config-panel-gap-radio-text,
+.better-link-display-app-config-panel-background-radio[aria-checked="true"] .better-link-display-app-config-panel-background-radio-text {
 	color: var(--text-on-accent, #ffffff);
 	font-weight: 600;
 }
