@@ -727,7 +727,7 @@ a.external-link.better-link-display-app-tile:hover {
 	 * nowrap text removes the slack that equalised them — the slider below
 	 * depends on this to land exactly under whichever option is selected. */
 	display: grid;
-	grid-template-columns: repeat(3, 1fr);
+	grid-template-columns: repeat(3, minmax(0, 1fr));
 	align-items: center;
 	width: 100%;
 	height: 40px;
@@ -737,7 +737,7 @@ a.external-link.better-link-display-app-tile:hover {
 }
 
 .better-link-display-app-config-panel-icon-size-group {
-	grid-template-columns: repeat(5, 1fr);
+	grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .better-link-display-app-config-panel-icon-size-slider,
@@ -773,14 +773,13 @@ a.external-link.better-link-display-app-tile:hover {
 }
 
 .better-link-display-app-config-panel-icon-size-slider {
-	width: calc((100% - 6px) / 5);
+	width: calc((100% - 6px) / 4);
 }
 
-.better-link-display-app-config-panel-icon-size-group[data-icon-size="xs"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(0%); }
-.better-link-display-app-config-panel-icon-size-group[data-icon-size="s"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(100%); }
-.better-link-display-app-config-panel-icon-size-group[data-icon-size="m"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(200%); }
-.better-link-display-app-config-panel-icon-size-group[data-icon-size="l"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(300%); }
-.better-link-display-app-config-panel-icon-size-group[data-icon-size="xl"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(400%); }
+.better-link-display-app-config-panel-icon-size-group[data-icon-size="s"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(0%); }
+.better-link-display-app-config-panel-icon-size-group[data-icon-size="m"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(100%); }
+.better-link-display-app-config-panel-icon-size-group[data-icon-size="l"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(200%); }
+.better-link-display-app-config-panel-icon-size-group[data-icon-size="xl"] .better-link-display-app-config-panel-icon-size-slider { transform: translateX(300%); }
 
 .better-link-display-app-config-panel-icon-size-radio,
 .better-link-display-app-config-panel-gap-radio,
@@ -793,8 +792,8 @@ a.external-link.better-link-display-app-tile:hover {
 	min-width: 0;
 	padding: 0;
 	border: 0;
-	background: transparent;
-	background-color: transparent;
+	background: transparent !important;
+	background-color: transparent !important;
 	box-shadow: none;
 	appearance: none;
 	text-align: center;
@@ -808,11 +807,11 @@ a.external-link.better-link-display-app-tile:hover {
 	cursor: pointer;
 }
 
-.better-link-display-app-config-panel-icon-size-radio:hover,
-.better-link-display-app-config-panel-gap-radio:hover,
-.better-link-display-app-config-panel-background-radio:hover {
-	background: transparent;
-	background-color: transparent;
+.better-link-display-app-config-panel button.better-link-display-app-config-panel-icon-size-radio:hover,
+.better-link-display-app-config-panel button.better-link-display-app-config-panel-gap-radio:hover,
+.better-link-display-app-config-panel button.better-link-display-app-config-panel-background-radio:hover {
+	background: transparent !important;
+	background-color: transparent !important;
 	color: var(--text-muted);
 }
 
