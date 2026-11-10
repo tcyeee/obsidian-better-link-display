@@ -109,7 +109,7 @@ function applyAppearance(grid: HTMLElement, config: AppGridConfig): void {
 		"--better-link-display-app-gap": `${config.gap}px`,
 	});
 	grid.toggleClass(GRID_BACKGROUND_CLASS, !!config.background);
-	if (config.background) grid.setCssProps({ "--better-link-display-app-bg": `#${config.background}` });
+	if (config.background) grid.setCssProps({ "--better-link-display-app-bg": `#${config.background}80` });
 }
 
 /**
