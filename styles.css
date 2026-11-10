@@ -367,7 +367,12 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
  */
 .better-link-display-app-grid {
 	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(72px, 1fr));
+	width: fit-content;
+	max-width: 100%;
+	grid-template-columns: repeat(
+		auto-fill,
+		minmax(max(72px, calc(var(--better-link-display-app-icon-size, 32px) + var(--size-4-2) + var(--size-4-2))), 1fr)
+	);
 	gap: var(--better-link-display-app-gap, var(--size-4-3));
 	transition: gap 180ms ease, background-color 180ms ease, padding 180ms ease;
 	margin: var(--size-4-2) 0;
@@ -396,6 +401,9 @@ a.external-link.better-link-display-app-tile {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
+	justify-self: center;
+	width: fit-content;
+	max-width: 100%;
 	gap: var(--size-4-1);
 	padding: var(--size-4-2);
 	border-radius: var(--radius-m);
@@ -407,6 +415,29 @@ a.external-link.better-link-display-app-tile {
 
 a.external-link.better-link-display-app-tile:hover {
 	background-color: var(--background-modifier-hover);
+}
+
+/* A tile stays marked as selected while its right-click menu is in use. */
+a.external-link.better-link-display-app-tile-selected {
+	box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 0%, transparent);
+	animation: better-link-display-app-tile-selection 1s ease-in-out infinite alternate;
+}
+
+@keyframes better-link-display-app-tile-selection {
+	from {
+		box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--interactive-accent) 0%, transparent);
+	}
+
+	to {
+		box-shadow: inset 0 0 0 2px var(--interactive-accent);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	a.external-link.better-link-display-app-tile-selected {
+		animation: none;
+		box-shadow: inset 0 0 0 2px var(--interactive-accent);
+	}
 }
 
 /*
@@ -507,7 +538,9 @@ a.external-link.better-link-display-app-tile:hover {
  * one.
  */
 .better-link-display-app-tile-label {
-	max-width: 100%;
+	width: var(--better-link-display-app-icon-size, 32px);
+	max-width: var(--better-link-display-app-icon-size, 32px);
+	box-sizing: border-box;
 	overflow: hidden;
 	font-size: 13px;
 	line-height: var(--line-height-normal);

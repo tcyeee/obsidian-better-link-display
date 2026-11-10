@@ -48,7 +48,7 @@ export function closeContextMenu(): void {
  * since the latter is what Obsidian's plugin review's `no-static-styles-assignment`
  * rule exists to catch.
  */
-export function showContextMenu(items: ContextMenuItemSpec[], x: number, y: number): void {
+export function showContextMenu(items: ContextMenuItemSpec[], x: number, y: number, onClose?: () => void): void {
 	closeActiveMenu?.();
 
 	const doc = activeDocument;
@@ -60,6 +60,7 @@ export function showContextMenu(items: ContextMenuItemSpec[], x: number, y: numb
 		abortController.abort();
 		menu.remove();
 		if (closeActiveMenu === close) closeActiveMenu = null;
+		onClose?.();
 	}
 	closeActiveMenu = close;
 

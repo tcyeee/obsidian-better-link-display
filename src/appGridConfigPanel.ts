@@ -6,7 +6,7 @@ type IconSizeKey = "s" | "m" | "l" | "xl";
 type BackgroundKey = "none" | "gray" | "beige";
 
 /** The only icon/gap px values the panel offers — a hand-edited block may hold anything else, see appGridScan.ts. */
-const ICON_SIZES: Record<IconSizeKey, number> = { s: 24, m: 32, l: 40, xl: 48 };
+const ICON_SIZES: Record<IconSizeKey, number> = { s: 32, m: 40, l: 48, xl: 56 };
 const GAP_SIZES: Record<SizeKey, number> = { s: 8, m: 12, l: 16 };
 /** The only two area-background colours the panel offers, as 6-digit hex with no `#`. */
 const BACKGROUND_COLORS: Record<Exclude<BackgroundKey, "none">, string> = {

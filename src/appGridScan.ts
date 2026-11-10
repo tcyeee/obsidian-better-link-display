@@ -146,7 +146,7 @@ export function normalizeAppGridUrl(input: string): string | null {
 }
 
 export interface AppGridConfig {
-	/** Icon side length in px. The settings dialog only offers s/m/l; this holds whatever that resolved to. */
+	/** Icon side length in px. The settings dialog offers named size presets; this holds the resolved value. */
 	iconSize: number;
 	/** Grid gap in px, same s/m/l-to-px relationship as {@link iconSize}. */
 	gap: number;
