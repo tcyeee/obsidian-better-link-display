@@ -364,6 +364,12 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
  * the note pane's width instead of overflowing it. `auto-fill` rather than a
  * fixed column count, so a pane half the width of another still gets tiles
  * sized the same as everywhere else, just fewer per row.
+ *
+ * Each column is sized to the tile itself — the icon size plus its two sides
+ * of `--size-4-2` padding — so the columns shrink with a small icon setting
+ * instead of holding a fixed width that would leave dead space around every
+ * tile (the tile is `justify-self: center`, so any column wider than the tile
+ * would spread the surplus across both sides as extra gap).
  */
 .better-link-display-app-grid {
 	display: grid;
@@ -371,10 +377,10 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
 	max-width: 100%;
 	grid-template-columns: repeat(
 		auto-fill,
-		minmax(max(72px, calc(var(--better-link-display-app-icon-size, 32px) + var(--size-4-2) + var(--size-4-2))), 1fr)
+		minmax(calc(var(--better-link-display-app-icon-size, 32px) + var(--size-4-2) + var(--size-4-2)), 1fr)
 	);
 	gap: var(--better-link-display-app-gap, var(--size-4-3));
-	transition: gap 180ms ease, background-color 180ms ease, padding 180ms ease;
+	transition: gap 180ms ease, background-color 180ms ease, padding 180ms ease, grid-template-columns 180ms ease;
 	margin: var(--size-4-2) 0;
 }
 
@@ -485,6 +491,7 @@ a.external-link.better-link-display-app-tile-selected {
 	height: var(--better-link-display-app-icon-size, 32px);
 	flex: 0 0 auto;
 	border-radius: var(--radius-s);
+	transition: width 180ms ease, height 180ms ease;
 }
 
 .better-link-display-app-tile-pending .better-link-display-app-tile-icon-shell {
@@ -538,14 +545,15 @@ a.external-link.better-link-display-app-tile-selected {
  * one.
  */
 .better-link-display-app-tile-label {
-	width: var(--better-link-display-app-icon-size, 32px);
-	max-width: var(--better-link-display-app-icon-size, 32px);
+	width: calc(var(--better-link-display-app-icon-size, 32px) * 1.3);
+	max-width: calc(var(--better-link-display-app-icon-size, 32px) * 1.3);
 	box-sizing: border-box;
 	overflow: hidden;
 	font-size: 13px;
 	line-height: var(--line-height-normal);
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	transition: width 180ms ease, max-width 180ms ease;
 }
 
 /*
