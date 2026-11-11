@@ -687,6 +687,11 @@ function openTileMenu(entry: RegisteredTile, x: number, y: number): void {
 				onClick: () => openEditNameModal(context, index, tile),
 			},
 			{
+				icon: "copy",
+				label: t("appGrid.menu.copyLink"),
+				onClick: () => void copyTileLink(url),
+			},
+			{
 				icon: "refresh-cw",
 				label: t("appGrid.menu.update"),
 				onClick: () => void updateTile(tile, url, index, context),
@@ -792,10 +797,18 @@ function deleteTile(context: TileContext, index: number): void {
 	writeAppGridBody(context, (body) => removeAppGridLine(body, index));
 }
 
+/** "Copy link" from the tile's context menu — the bare URL, not the rendered bookmark Markdown. */
+async function copyTileLink(url: string): Promise<void> {
+	await navigator.clipboard.writeText(url);
+	new Notice(t("appGrid.menu.linkCopied"));
+}
+
 /**
  * "Insert APP view" from the editor's right-click menu. Appended at the end
  * of the cursor's line (see {@link buildAppGridInsertion}) rather than at the
- * cursor itself, so a click mid-line doesn't split that text around the block.
+ * cursor itself, so a click mid-line doesn't split that text around the
+ * block — and the cursor is left after the block's closing fence, not inside
+ * it, so focus doesn't sit trapped in the block it just created.
  */
 export function insertAppGridBlock(editor: Editor): void {
 	const cursor = editor.getCursor();

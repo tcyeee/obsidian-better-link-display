@@ -96,17 +96,17 @@ test("a link whose text is empty reads as a bare URL", () => {
 	]);
 });
 
-test("inserting on an empty line starts the block there", () => {
+test("inserting on an empty line starts the block there and leaves the cursor after it", () => {
 	assert.deepEqual(buildAppGridInsertion(""), {
 		text: "```link-grid\n\n```\n",
-		cursorOffset: { line: 1, ch: 0 },
+		cursorOffset: { line: 3, ch: 0 },
 	});
 });
 
-test("inserting on a non-empty line gives the block its own line", () => {
+test("inserting on a non-empty line gives the block its own line and leaves the cursor after it", () => {
 	assert.deepEqual(buildAppGridInsertion("some existing text"), {
 		text: "\n```link-grid\n\n```\n",
-		cursorOffset: { line: 2, ch: 0 },
+		cursorOffset: { line: 4, ch: 0 },
 	});
 });
 
