@@ -14,11 +14,15 @@ It's still an ordinary Markdown link — the icon is inlined as text, so the boo
 
 ## How to use
 
+**Option 1: Create a bookmark grid.** Right-click in a note and choose “Create bookmark view”, then add website links to display them in a grid.
+
 方式一: 你可以通过在笔记中点击鼠标右键创建“书签视图”, 然后在其中添加网站链接, 网站链接将会呈现网格排布样式.
 
 <img src="./public/1.gif" style="zoom:67%;" />
 
 
+
+**Option 2: Format an existing link.** Hover over a website link and click “Format” to turn it into a bookmark with the site’s icon and title.
 
 方式2: 鼠标悬浮在已有的网站链接上, 点击“格式化”, 即可将书签变为“图标+网站标题”样式.
 
