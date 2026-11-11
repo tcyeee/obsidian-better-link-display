@@ -1,6 +1,6 @@
 {
   "name": "obsidian-better-link-display",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "Turn web links in your notes into clean, readable bookmarks with website titles and favicons. Format Markdown links or organize URLs in a customizable bookmark grid for focused, clutter-free note-taking.",
   "main": "main.js",
   "scripts": {
