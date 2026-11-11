@@ -3,7 +3,7 @@
 	"name": "Better Link Display",
 	"version": "1.0.8",
 	"minAppVersion": "1.13.0",
-	"description": "Turn bare URL links into rich bookmarks showing the site's favicon and title.",
+	"description": "Turn web links in your notes into clean, readable bookmarks with website titles and favicons. Format Markdown links or organize URLs in a customizable bookmark grid for focused, clutter-free note-taking.",
 	"author": "tcyeee",
 	"authorUrl": "https://github.com/tcyeee",
 	"isDesktopOnly": false
