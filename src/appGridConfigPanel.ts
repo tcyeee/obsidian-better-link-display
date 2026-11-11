@@ -283,8 +283,12 @@ export function showAppConfigPanel(
 	win.addEventListener(
 		"mousedown",
 		(event) => {
-			if (!(event.target instanceof Node)) return;
-			if (panel.contains(event.target) || anchor.contains(event.target)) return;
+			// Not `instanceof Node`: Obsidian gives a popout window its own copy of
+			// the DOM classes, and a node from one fails that test against the main
+			// window's. A mousedown target is always a node (or null).
+			const target = event.target as Node | null;
+			if (!target) return;
+			if (panel.contains(target) || anchor.contains(target)) return;
 			close();
 		},
 		{ signal, capture: true }

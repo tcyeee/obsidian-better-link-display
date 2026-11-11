@@ -643,9 +643,13 @@ function ensureContextMenuCapture(win: Window): void {
 	win.addEventListener(
 		"contextmenu",
 		(event) => {
-			if (!(event.target instanceof Element)) return;
+			// Not `instanceof Element`: Obsidian gives a popout window its own copy of
+			// the DOM classes, and a node from one fails that test against the main
+			// window's.
+			const target = event.target as Element | null;
+			if (!target || target.nodeType !== Node.ELEMENT_NODE) return;
 
-			const anchor = event.target.closest<HTMLAnchorElement>(`a.${TILE_CLASS}`);
+			const anchor = target.closest<HTMLAnchorElement>(`a.${TILE_CLASS}`);
 			if (anchor) {
 				// This menu is a Live Preview affordance; Reading view still swallows
 				// the event (no native link menu on a grid tile either) but doesn't
@@ -667,7 +671,7 @@ function ensureContextMenuCapture(win: Window): void {
 				return;
 			}
 
-			if (event.target.closest(`.${GRID_CLASS}`)) {
+			if (target.closest(`.${GRID_CLASS}`)) {
 				event.preventDefault();
 				event.stopImmediatePropagation();
 			}

@@ -97,7 +97,11 @@ export function showContextMenu(items: ContextMenuItemSpec[], x: number, y: numb
 	win.addEventListener(
 		"mousedown",
 		(event) => {
-			if (!(event.target instanceof Node) || !menu.contains(event.target)) close();
+			// Not `instanceof Node`: Obsidian gives a popout window its own copy of
+			// the DOM classes, and a node from one fails that test against the main
+			// window's. A mousedown target is always a node (or null).
+			const target = event.target as Node | null;
+			if (!target || !menu.contains(target)) close();
 		},
 		{ signal, capture: true }
 	);

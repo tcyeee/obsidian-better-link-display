@@ -43,7 +43,11 @@ export function showAppAddPanel(anchor: HTMLElement, onAdd: (url: string) => voi
 	const win = doc.defaultView;
 	if (!win) return;
 
-	const previouslyFocused = doc.activeElement instanceof HTMLElement ? doc.activeElement : null;
+	// Not `instanceof HTMLElement`: Obsidian gives a popout window its own copy
+	// of the DOM classes, and a node from one fails that test against the main
+	// window's.
+	const previouslyFocused =
+		doc.activeElement?.nodeType === Node.ELEMENT_NODE ? (doc.activeElement as HTMLElement) : null;
 
 	const panel = doc.body.createDiv({ cls: PANEL_CLASS });
 	panel.createDiv({ cls: TITLE_CLASS, text: t("appGrid.add.title") });
@@ -129,8 +133,12 @@ export function showAppAddPanel(anchor: HTMLElement, onAdd: (url: string) => voi
 	win.addEventListener(
 		"mousedown",
 		(event) => {
-			if (!(event.target instanceof Node)) return;
-			if (panel.contains(event.target) || anchor.contains(event.target)) return;
+			// Not `instanceof Node`: Obsidian gives a popout window its own copy of
+			// the DOM classes, and a node from one fails that test against the main
+			// window's. A mousedown target is always a node (or null).
+			const target = event.target as Node | null;
+			if (!target) return;
+			if (panel.contains(target) || anchor.contains(target)) return;
 			close();
 		},
 		{ signal, capture: true }
