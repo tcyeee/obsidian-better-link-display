@@ -137,16 +137,19 @@ const BLOCK_TEMPLATE = "```link-grid\n\n```\n";
 
 /**
  * Text for the "Insert APP view" menu item and where the cursor should land
- * afterwards — the blank line between the fences, ready to paste a URL. The
- * caller appends this at the end of the line under the cursor rather than at
- * the cursor itself, so when that line already holds text the block starts
- * on a line of its own instead of splitting the text in two.
+ * afterwards — just past the closing fence, not between the fences, so the
+ * cursor comes to rest outside the block it just created instead of inside
+ * it (where Live Preview would keep rendering it as raw Markdown for as long
+ * as the cursor stayed there). The caller appends this at the end of the
+ * line under the cursor rather than at the cursor itself, so when that line
+ * already holds text the block starts on a line of its own instead of
+ * splitting the text in two.
  */
 export function buildAppGridInsertion(currentLine: string): AppGridInsertion {
 	const ownLine = currentLine.length > 0;
 	return {
 		text: `${ownLine ? "\n" : ""}${BLOCK_TEMPLATE}`,
-		cursorOffset: { line: ownLine ? 2 : 1, ch: 0 },
+		cursorOffset: { line: ownLine ? 4 : 3, ch: 0 },
 	};
 }
 
