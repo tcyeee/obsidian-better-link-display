@@ -4,11 +4,29 @@ Turn a plain web link in your note into a bookmark with the site's real title an
 
 把笔记里的网址一键变成带网站标题和图标的书签。
 
-![](./public/0.gif)
+![](./public/0.png)
 
 It's still an ordinary Markdown link — the icon is inlined as text, so the bookmark keeps working with the plugin disabled, in another vault, or in any other Markdown app.
 
 它依然是普通的 Markdown 链接——图标以文本形式内嵌，所以即使停用插件、换个库或换个 Markdown 应用，书签照样正常显示。
+
+
+
+## How to use
+
+方式一: 你可以通过在笔记中点击鼠标右键创建“书签视图”, 然后在其中添加网站链接, 网站链接将会呈现网格排布样式.
+
+<img src="./public/1.gif" style="zoom:67%;" />
+
+
+
+方式2: 鼠标悬浮在已有的网站链接上, 点击“格式化”, 即可将书签变为“图标+网站标题”样式.
+
+
+
+<img src="./public/2.gif" style="zoom: 67%;" />
+
+
 
 ## Install
 
@@ -26,45 +44,7 @@ Titles come from a small online service, [Bookmarkify](https://bookmarkify.cc), 
 
 The token is read-only — it can only look up a page's title and icon.
 
-## Use
 
-In editing mode, hover a link and pick **Format** from the little menu. Works with all three forms:
-
-```
-https://example.com
-[Example](https://example.com)
-<https://example.com>
-```
-
-No mouse (or on mobile)? Put the cursor in the link and run **Format link under cursor** from the command palette.
-
-The menu on an already-formatted link offers **Reformat** (look it up again) and **Reset** (strip the icon, leaving `[Title](url)` — instant and offline).
-
-Choose **Custom name** on any link to enter your own title, then **Save** (or press Enter). This works offline and keeps the existing icon. Reformat replaces the custom title with the site's title again.
-
-When no icon is available, formatting or setting a custom name uses the root domain's first letter on a grey background as the logo.
-
-If a lookup fails, a notice explains why and your note is left untouched.
-
-## Bookmark grid
-
-A `link-grid` code block renders a grid of bookmark tiles — one per URL, showing the site's app icon and name. Right-click in the editor and choose **Insert bookmark view**, or type it by hand:
-
-    ```link-grid
-    https://example.com
-    https://github.com
-    ```
-
-Each line is a bare URL or `[Name](url)` to give a tile your own title.
-
-In Live Preview:
-
-- Click the **+** tile to add a link — enter a domain (`example.com`) or a full URL, then **Add**.
-- Drag a tile to reorder the grid — drop before or after another tile.
-- Right-click a tile for **Edit name**, **Update bookmark** (re-fetch the icon and name), or **Delete bookmark**.
-- Click the gear button beside the block for its appearance: icon size, spacing, area background, a card behind each tile, and a colour plate tinted from each icon.
-
-Reading view shows the same grid as plain links — the editing controls only exist in Live Preview. Icons and titles are cached in your vault, so tiles load instantly after the first lookup; clear the cache from settings.
 
 ## Settings
 
