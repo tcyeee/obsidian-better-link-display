@@ -131,10 +131,13 @@ function buildToggleRow(
 
 /**
  * The appearance panel opened from the app grid's own settings (gear)
- * button. Every control applies immediately — there is no Save/Cancel —
- * matching how every other mutation in `appGrid.ts` (add/delete/rename/
- * update a tile) already rewrites the block's source line the moment it
- * happens, rather than buffering edits for a later commit.
+ * button. Every control previews live via CSS on every `onChange`; the
+ * caller (`openConfigPanel` in `appGrid.ts`) is the one that decides when to
+ * write the result into the block's source, through `onClose`, since this
+ * module has no reason to care how either callback is used downstream —
+ * see that function's doc comment for why the write happens there and not
+ * on every `onChange` too. `onClose` takes no argument because the caller
+ * already has the latest value from its own last `onChange`.
  *
  * Positioned under the triggering button rather than the click point, same
  * as the design doc this follows. Unlike that doc's own panel, this one's
@@ -152,7 +155,7 @@ export function showAppConfigPanel(
 	anchor: HTMLElement,
 	initial: AppGridConfig,
 	onChange: (config: AppGridConfig) => void,
-	onClose: (config: AppGridConfig) => void = () => undefined
+	onClose: () => void = () => undefined
 ): void {
 	const reopening = activePanel?.anchor === anchor;
 	activePanel?.close();
@@ -176,13 +179,6 @@ export function showAppConfigPanel(
 			appBackground,
 			iconBackground,
 		});
-	const currentConfig = (): AppGridConfig => ({
-		iconSize: ICON_SIZES[iconKey],
-		gap: GAP_SIZES[gapKey],
-		background: backgroundKey === "none" ? null : BACKGROUND_COLORS[backgroundKey],
-		appBackground,
-		iconBackground,
-	});
 
 	const panel = doc.body.createDiv({ cls: PANEL_CLASS });
 	const ICON_SIZE_OPTIONS = (["s", "m", "l", "xl"] as IconSizeKey[]).map((key) => ({
@@ -257,7 +253,7 @@ export function showAppConfigPanel(
 
 	const abortController = new AbortController();
 	function close(): void {
-		onClose(currentConfig());
+		onClose();
 		abortController.abort();
 		panel.remove();
 		if (activePanel?.close === close) activePanel = null;
