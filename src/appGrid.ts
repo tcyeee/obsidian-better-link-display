@@ -30,7 +30,15 @@ import { t } from "./i18n";
 
 const GRID_CLASS = "better-link-display-app-grid";
 const GRID_BACKGROUND_CLASS = "better-link-display-app-grid-bg";
-const TILE_CLASS = "better-link-display-app-tile";
+/**
+ * Exported so `bookmarkMarks.ts` can tell a tile's own anchor apart from a
+ * formatted bookmark's: both are `a.external-link` holding a `data:image/`
+ * `img` (the tile's pending placeholder is a canvas-drawn PNG, same scheme as
+ * an inlined favicon), and `markReadingViewBookmarks` would otherwise tag a
+ * tile with `better-link-display-bookmark` whenever Reading view's
+ * post-processor runs while a tile is still pending.
+ */
+export const TILE_CLASS = "better-link-display-app-tile";
 const TILE_PENDING_CLASS = "better-link-display-app-tile-pending";
 const TILE_BACKGROUND_CLASS = "better-link-display-app-tile-bg";
 /** On the icon itself, not the tile: the plate colour is sampled per icon, see {@link syncIconBackground}. */
