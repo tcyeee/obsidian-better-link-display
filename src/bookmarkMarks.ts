@@ -1,5 +1,6 @@
 import { Extension, Range } from "@codemirror/state";
 import { Decoration, DecorationSet, EditorView, ViewPlugin, ViewUpdate } from "@codemirror/view";
+import { TILE_CLASS } from "./appGrid";
 import { findBookmarkRanges, hasInlineIcon } from "./bookmarkScan";
 
 /**
@@ -32,7 +33,13 @@ const ICON_SELECTOR = 'img[src^="data:image/"]';
  */
 export function markReadingViewBookmarks(el: Element): void {
 	for (const icon of Array.from(el.querySelectorAll(ICON_SELECTOR))) {
-		icon.closest("a.external-link")?.addClass(BOOKMARK_CLASS);
+		const anchor = icon.closest("a.external-link");
+		// An app-grid tile's pending placeholder is also a `data:image/` PNG, on
+		// an `a.external-link` of its own — without this it reads as a formatted
+		// bookmark until the block's next render replaces the placeholder, which
+		// is what let it keep the body-wide "Bookmark background"/"Bookmark
+		// border" appearance options even with the grid's own background off.
+		if (anchor && !anchor.hasClass(TILE_CLASS)) anchor.addClass(BOOKMARK_CLASS);
 	}
 }
 
