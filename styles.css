@@ -389,11 +389,20 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
  * fixed column count, so a pane half the width of another still gets tiles
  * sized the same as everywhere else, just fewer per row.
  *
- * Each column is sized to the tile itself — the icon size plus its two sides
- * of `--size-4-2` padding — so the columns shrink with a small icon setting
- * instead of holding a fixed width that would leave dead space around every
- * tile (the tile is `justify-self: center`, so any column wider than the tile
- * would spread the surplus across both sides as extra gap).
+ * Each column is sized to the tile itself, so the columns shrink with a small
+ * icon setting instead of holding a fixed width that would leave dead space
+ * around every tile (the tile is `justify-self: center`, so any column wider
+ * than the tile would spread the surplus across both sides as extra gap).
+ * The minmax floor below has to match the tile's own widest child — the
+ * label at `--better-link-display-app-tile-label`'s `icon-size * 1.3`, not
+ * the narrower icon-plus-padding it used to use — or `auto-fill` can pack a
+ * column narrower than the tile actually renders at. The tile's `max-width:
+ * 100%` then clips it down to that column's width, and since how many
+ * columns fit (and so how much each one shrinks) depends on `gap`, the
+ * "Spacing" control ended up changing tile width too, on some combination of
+ * pane width and tile count on almost every pane size. Flooring every column
+ * at the label's width keeps a column always at least as wide as the tile,
+ * so that clip never engages and `gap` only ever moves space between tiles.
  */
 .better-link-display-app-grid {
 	display: grid;
@@ -401,7 +410,7 @@ body.better-link-display-border .cm-editor .better-link-display-plate {
 	max-width: 100%;
 	grid-template-columns: repeat(
 		auto-fill,
-		minmax(calc(var(--better-link-display-app-icon-size, 32px) + var(--size-4-2) + var(--size-4-2)), 1fr)
+		minmax(calc((var(--better-link-display-app-icon-size, 32px) * 1.3) + var(--size-4-2) + var(--size-4-2)), 1fr)
 	);
 	gap: var(--better-link-display-app-gap, var(--size-4-3));
 	transition: gap 180ms ease, background-color 180ms ease, padding 180ms ease, grid-template-columns 180ms ease;

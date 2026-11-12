@@ -99,7 +99,7 @@ export function renderAppGrid(
 	});
 
 	buildAddTile(grid, entries.length > 0, (tile) => openAddPanel(app, ctx, el, tile));
-	attachConfigButton(el, child, (button) => openConfigPanel(button, app, ctx, el));
+	attachConfigButton(el, child, (button) => openConfigPanel(button, app, ctx, el, cache, child));
 }
 
 /**
@@ -275,28 +275,49 @@ function attachConfigButton(
 }
 
 /**
- * Opens the appearance panel for this block. Every control applies live via
- * CSS as the user drags through options (`applyLiveConfig`, driven by
- * `onChange`) and the source line is written back only once, when the panel
- * closes (`persistConfig`, driven by `onClose`) — same `getSectionInfo`
- * lookup as {@link openAddPanel}, reading the body fresh at click time so the
- * panel starts from whatever the block actually holds rather than its state
- * when the block was last rendered.
+ * Opens the appearance panel for this block. `applyLiveConfig` runs on every
+ * `onChange`, patching the already-rendered DOM through CSS so the change is
+ * visible immediately with no re-render lag — including the icon's/gap's own
+ * 180ms CSS transition, which only plays between two states of the *same*
+ * element. `persistConfig`, the matching write into the block's source line,
+ * only runs once, from `onClose`.
  *
- * Writing on every intermediate change (rather than once at close) was tried
- * and reverted: each write re-renders the block from the post-processor up,
- * which is the only way Obsidian picks up the new source, but it also tears
- * down the live DOM `applyLiveConfig` had just updated and replaces it with a
- * freshly built one — visible as a flash/jump on every click instead of the
- * smooth CSS transition `applyLiveConfig` gives while the panel is open.
- * Deferring the write to close keeps the editor (and the block) untouched for
- * the whole interaction, so nothing re-renders until the user is done.
+ * Writing on every change (rather than once at close) was tried and
+ * reverted twice over: first because each write makes the block's
+ * post-processor re-render it from scratch, so a session of several changes
+ * meant several rebuilds, each one swapping in elements with no "previous
+ * state" to transition from — every click snapped instead of gliding.
+ * Debouncing the write only moved the rebuild later without removing it, and
+ * since a rebuilt tile set is a genuinely new DOM (not the one `grid`/`tiles`
+ * below still point at), every change after the first debounced write landed
+ * on stale elements and produced no visible feedback at all until the *next*
+ * write finally caught up — worse than the flash it replaced. Writing only
+ * at close keeps the block's DOM untouched, and so `applyLiveConfig` working,
+ * for the whole interaction.
+ *
+ * The risk that trade accepts is the one `persistConfig` is written to
+ * survive: closing because the view switched away from Live Preview (see
+ * main.ts's `layout-change` handler) runs *after* that view's DOM is already
+ * gone, so `ctx.getSectionInfo(el)` can't resolve — `persistConfig` falls
+ * back to the line range captured when the panel opened instead of depending
+ * on it, so that close still writes rather than silently dropping the user's
+ * last change.
+ *
+ * Turning "Icon background colour" on needs more than the class toggle
+ * {@link applyTileAppearance} does: the colour itself is sampled once per
+ * icon by {@link syncIconBackground} and only runs from `resolveTile` while a
+ * tile first resolves, so a tile that resolved while the option was off has
+ * never had it computed. Without the extra call below the toggle would only
+ * take effect after the block re-renders (i.e. once the panel closes and the
+ * new source line is parsed from scratch), same as the bug this fixes.
  */
 function openConfigPanel(
 	button: HTMLElement,
 	app: App,
 	ctx: MarkdownPostProcessorContext,
-	el: HTMLElement
+	el: HTMLElement,
+	cache: AppGridCache,
+	child: AppGridRenderChild
 ): void {
 	const editor = findEditor(app, ctx.sourcePath);
 	const info = ctx.getSectionInfo(el);
@@ -313,21 +334,43 @@ function openConfigPanel(
 		for (const anchor of tiles) {
 			const icon = anchor.querySelector<HTMLImageElement>("img");
 			const label = anchor.querySelector<HTMLElement>(`.${TILE_CLASS}-label`);
-			if (icon && label) applyTileAppearance({ anchor, icon, label }, next);
+			if (!icon || !label) continue;
+			applyTileAppearance({ anchor, icon, label }, next);
+			if (next.iconBackground && !icon.style.getPropertyValue("--better-link-display-app-icon-bg")) {
+				const url = anchor.getAttribute("href");
+				if (url) void syncIconBackground({ anchor, icon, label }, next, child, () => cache.readIconBytes(url));
+			}
 		}
 	};
 	const persistConfig = (next: AppGridConfig): void => {
 		const freshEditor = findEditor(app, ctx.sourcePath);
+		if (!freshEditor) return;
+		// `ctx.getSectionInfo(el)` only resolves while `el` is still the block
+		// Live Preview rendered, which is exactly what's gone once the view has
+		// switched away from Live Preview (the close path this write exists
+		// for). The lines it points at don't move on their own just because the
+		// view changed, so the fallback is as accurate as the fresh lookup,
+		// just unable to notice if something *else* shifted lines above it in
+		// the meantime.
 		const freshInfo = ctx.getSectionInfo(el);
-		if (!freshEditor || !freshInfo) return;
-		const freshFrom = { line: freshInfo.lineStart + 1, ch: 0 };
-		const freshTo = { line: freshInfo.lineEnd, ch: 0 };
+		const freshFrom = freshInfo ? { line: freshInfo.lineStart + 1, ch: 0 } : from;
+		const freshTo = freshInfo ? { line: freshInfo.lineEnd, ch: 0 } : to;
 		const freshBody = freshEditor.getRange(freshFrom, freshTo);
 		const nextBody = upsertAppGridConfigLine(freshBody, next);
 		if (nextBody === freshBody) return;
 		freshEditor.replaceRange(nextBody, freshFrom, freshTo);
 	};
-	showAppConfigPanel(button, config, applyLiveConfig, persistConfig);
+
+	let latestConfig = config;
+	showAppConfigPanel(
+		button,
+		config,
+		(next) => {
+			applyLiveConfig(next);
+			latestConfig = next;
+		},
+		() => persistConfig(latestConfig)
+	);
 }
 
 /** The open editor, if any, for a note at `path` — a `link-grid` block is only editable while one exists. */
