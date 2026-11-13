@@ -424,6 +424,7 @@ export class BetterLinkDisplayEditorFeature {
 		this.menuItem(container, view, "pencil", t("button.customName"), () =>
 			this.customName(view, from, to, source, url, escapePipes)
 		);
+		this.menuItem(container, view, "copy", t("button.copyLink"), () => this.copyLink(url));
 
 		if (plain !== null) {
 			this.menuItem(container, view, "rotate-ccw", t("button.reset"), () =>
@@ -476,6 +477,11 @@ export class BetterLinkDisplayEditorFeature {
 		if (view.state.sliceDoc(from, to) !== source) return;
 		if (hasMarkOverlapping(view, from, to)) return;
 		view.dispatch({ changes: { from, to, insert: plain } });
+	}
+
+	/** "Copy link" from the hover menu — the bare URL, not the rendered bookmark Markdown. */
+	private copyLink(url: string): void {
+		void navigator.clipboard.writeText(url).then(() => new Notice(t("appGrid.menu.linkCopied")));
 	}
 
 	private customName(
