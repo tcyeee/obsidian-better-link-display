@@ -10,9 +10,12 @@
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "keywords": [
+    "obsidian",
     "obsidian-plugin",
+    "obsidian-md",
     "bookmark",
     "favicon",
+    "link-preview",
     "markdown",
     "note-taking",
     "link-management",
